@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>k8s-platform Manifest Guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a single reading column (~70ch) with wide figures that may break out to 1100px. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #16202c; --muted: #586476; --line: #d3dae4;
+  --accent: #2456c4; --accent-bg: #e8eefc;
+  --build: #b45f00; --build-bg: #fff1dc;
+  --ok: #1d7a4b; --bad: #b3261e; --ok-bg: #e3f4ea; --bad-bg: #fbe7e5;
+  --code-bg: #eef1f5;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e131a; --surface: #151c26; --ink: #e5eaf1; --muted: #97a2b3; --line: #2b3646;
+  --accent: #7ea4ff; --accent-bg: #1b2740;
+  --build: #ffb04a; --build-bg: #36270f;
+  --ok: #62d39c; --bad: #ff8b82; --ok-bg: #12301f; --bad-bg: #3a1614;
+  --code-bg: #1b2330; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e5eaf1; --muted: #97a2b3; --line: #2b3646;
+  --accent: #7ea4ff; --accent-bg: #1b2740;
+  --build: #ffb04a; --build-bg: #36270f;
+  --ok: #62d39c; --bad: #ff8b82; --ok-bg: #12301f; --bad-bg: #3a1614;
+  --code-bg: #1b2330; color-scheme: dark; }
+
+body { background: var(--bg); color: var(--ink); font: 16px/1.62 var(--f-body); }
+.page { max-width: 1100px; margin: 0 auto; padding-block: 40px 80px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.col { max-width: 70ch; }
+header.top { display: grid; gap: 10px; margin-bottom: 36px; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 27px; font-weight: 600; margin-top: 56px; margin-bottom: 12px; }
+h3 { font-size: 19px; font-weight: 600; margin-top: 28px; margin-bottom: 6px; }
+p { margin: 0 0 14px; }
+.lede { font-size: 18px; color: var(--muted); max-width: 66ch; }
+a { color: var(--accent); }
+code, .mono { font-family: var(--f-mono); font-size: .88em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto;
+  font: 13.5px/1.55 var(--f-mono); margin: 0 0 16px; }
+pre code { background: none; padding: 0; font-size: inherit; }
+ul, ol { padding-left: 22px; margin: 0 0 14px; }
+li { margin-bottom: 6px; }
+li::marker { color: var(--muted); }
+
+figure { margin: 22px 0 30px; }
+.fig { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; min-width: 760px; color: var(--muted); }
+figcaption { font-size: 14px; color: var(--muted); margin-top: 10px; max-width: 80ch; }
+
+/* SVG vocabulary (styled from page CSS so both themes work) */
+svg text { fill: var(--ink); font-family: var(--f-body); font-size: 13px; }
+svg .sm { font-size: 11.5px; fill: var(--muted); }
+svg .mo { font-family: var(--f-mono); font-size: 11.5px; }
+svg .hd { font-family: var(--f-display); font-weight: 600; font-size: 14px; }
+svg .zone { fill: none; stroke: var(--line); stroke-width: 1.5; }
+svg .zone-d { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+svg .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.4; }
+svg .box-a { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.4; }
+svg .box-b { fill: var(--build-bg); stroke: var(--build); stroke-width: 2.2; }
+svg .box-g { fill: var(--code-bg); stroke: var(--line); stroke-width: 1.2; }
+svg .t-b { fill: var(--build); }
+svg .t-a { fill: var(--accent); }
+svg .t-ok { fill: var(--ok); }
+svg .t-bad { fill: var(--bad); }
+svg .ln { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+svg .ln-a { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+svg .ln-b { stroke: var(--build); stroke-width: 2; fill: none; }
+svg .ln-d { stroke: var(--muted); stroke-width: 1.2; fill: none; stroke-dasharray: 4 4; }
+svg .life { stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 3 4; }
+svg .act { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1; }
+svg .act-b { fill: var(--build-bg); stroke: var(--build); stroke-width: 1.2; }
+svg .frame { fill: none; stroke: var(--muted); stroke-width: 1.1; }
+svg .tag { fill: var(--muted); }
+svg .tag-t { fill: var(--surface); font-family: var(--f-mono); font-size: 11px; font-weight: 500; }
+svg .head-a { fill: var(--accent); } svg .head-m { fill: var(--muted); } svg .head-b { fill: var(--build); }
+
+/* Concept cards, tables, callouts */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 18px 0 8px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.card h4 { margin: 0 0 4px; font: 600 15px/1.3 var(--f-display); }
+.card .kind { font: 500 11px/1 var(--f-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.card p { font-size: 14.5px; margin: 6px 0 0; }
+.card.build { border-color: var(--build); background: var(--build-bg); }
+.tbl { overflow-x: auto; margin: 16px 0 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.3 var(--f-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--code-bg); }
+tr:last-child td { border-bottom: none; }
+td code { white-space: nowrap; }
+tr.hl td { background: var(--build-bg); }
+.note { border-left: 3px solid var(--accent); background: var(--accent-bg); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 18px 0; max-width: 70ch; }
+.note.build { border-color: var(--build); background: var(--build-bg); }
+.note p:last-child { margin-bottom: 0; }
+.pill { display: inline-block; font: 500 11.5px/1 var(--f-mono); padding: 4px 7px; border-radius: 4px; background: var(--code-bg); color: var(--muted); border: 1px solid var(--line); }
+.pill.b { background: var(--build-bg); color: var(--build); border-color: var(--build); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; color: var(--muted); margin-top: 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 10px; border-radius: 2px; border: 1.5px solid var(--line); background: var(--surface); }
+.sw.a { border-color: var(--accent); background: var(--accent-bg); }
+.sw.b { border-color: var(--build); background: var(--build-bg); border-width: 2px; }
+.sw.d { border-style: dashed; border-color: var(--muted); background: none; }
+.steps { counter-reset: s; list-style: none; padding: 0; display: grid; gap: 14px; margin: 18px 0; }
+.steps > li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; margin: 0; }
+.steps > li::before { content: counter(s); font: 600 14px/30px var(--f-mono); text-align: center; width: 30px; height: 30px;
+  border-radius: 50%; background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent); }
+.steps > li.b::before { background: var(--build-bg); color: var(--build); border-color: var(--build); }
+.steps > li > div { min-width: 0; }
+.steps h3 { margin: 3px 0 4px; font-size: 17px; }
+.steps p { margin-bottom: 8px; }
+.steps pre { margin-bottom: 8px; }
+.try { font-size: 14px; color: var(--muted); }
+footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 520px) { body { font-size: 15.5px; } h2 { font-size: 23px; } }
+</style>
+<style>
+.toc { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 18px 0 8px; }
+.tocg { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.tocg h4 { margin: 0 0 4px; font: 600 15px/1.3 var(--f-display); }
+.tocg p { font-size: 13.5px; color: var(--muted); margin: 0 0 8px; }
+.tocg ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.tocg li { margin: 0; font-size: 14px; }
+.tocg a { text-decoration: none; }
+.tocg a:hover code { text-decoration: underline; }
+.tk { color: var(--muted); font-size: 12.5px; }
+h2.grp { border-top: 2px solid var(--ink); padding-top: 14px; margin-top: 64px; }
+.gd { color: var(--muted); }
+section.mf { margin-top: 40px; scroll-margin-top: 16px; }
+.mfh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; margin-bottom: 8px; }
+.mfh h3 { margin: 0; font-size: 18px; }
+.mfh h3 code { background: none; padding: 0; font-size: 1em; font-weight: 500; overflow-wrap: anywhere; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.tmpl .pill { background: var(--build-bg); color: var(--build); border-color: var(--build); }
+.used { font-size: 14px; color: var(--muted); }
+.used span { font: 600 11px/1 var(--f-mono); text-transform: uppercase; letter-spacing: .06em; margin-right: 6px; color: var(--ink); }
+.split { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 1020px) { .split { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+.split > * { min-width: 0; margin: 0; }
+pre.y { font-size: 12.5px; line-height: 1.6; }
+pre.y .k { color: var(--accent); }
+pre.y .v { color: var(--build); font-weight: 500; }
+pre.y .v2 { color: var(--ok); font-weight: 500; }
+pre.y .c { color: var(--muted); }
+.split .tbl { margin: 0; }
+.split td { font-size: 13.5px; }
+.split td:first-child code { white-space: normal; overflow-wrap: break-word; }
+td.val code { white-space: normal; overflow-wrap: anywhere; background: none; padding: 0; color: var(--muted); }
+.split th:nth-child(1) { width: 26%; } .split th:nth-child(2) { width: 22%; }
+.after { margin-top: 12px; font-size: 15px; }
+.anat { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 860px) { .anat { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); } }
+.anat > * { min-width: 0; }
+.anat dl { margin: 0; display: grid; gap: 10px; }
+.anat dt { font: 500 14px/1.3 var(--f-mono); color: var(--accent); }
+.anat dd { margin: 2px 0 0; font-size: 15px; }
+</style>
+</head>
+<body>
+<main class="page">
+<header class="top">
+  <div class="eyebrow">k8s-platform · manifest reference</div>
+  <h1>k8s-platform Manifest Guide</h1>
+  <p class="lede">Every YAML file in the repo, field by field: what each important attribute does, why it has the value it has, and what changes if you edit it. The YAML shown is the real file with its comments removed; the comments' content is folded into the explanations.</p>
+</header>
+
+<section class="col">
+  <h2>How to read any manifest</h2>
+</section>
+<div class="anat">
+<pre class="y"><code><span class="k">apiVersion</span>: batch/v1
+<span class="k">kind</span>: Job
+<span class="k">metadata</span>:
+  <span class="k">name</span>: clone-k8s-java8-run-20261101-140500
+  <span class="k">namespace</span>: builds
+  <span class="k">labels</span>:
+    <span class="k">k8s-platform/stage</span>: clone
+<span class="k">spec</span>:
+  <span class="k">backoffLimit</span>: 2
+  <span class="k">template</span>:            <span class="c"># a whole Pod spec, nested</span>
+    <span class="k">spec</span>:
+      <span class="k">containers</span>: [...]
+<span class="k">status</span>:                <span class="c"># written by Kubernetes, never by you</span>
+  <span class="k">succeeded</span>: 1</code></pre>
+<dl>
+  <dt>apiVersion + kind</dt><dd>Which type of object this is. The group in <code>apiVersion</code> (<code>batch</code>, <code>apps</code>, <code>rbac.authorization.k8s.io</code>, or none for core types like Pod and ConfigMap) also appears in RBAC rules. <code>kubectl explain job.spec</code> documents any field.</dd>
+  <dt>metadata</dt><dd>Identity: <code>name</code> (unique per kind per namespace), <code>namespace</code>, and <code>labels</code>, the key/value tags that selectors, Services and <code>kubectl -l</code> match on.</dd>
+  <dt>spec</dt><dd>The state you want. Controllers keep working until reality matches it. Workloads (Job, CronJob, Deployment) nest a pod <code>template</code> inside their spec.</dd>
+  <dt>status</dt><dd>What actually happened, filled in by Kubernetes. You'll see it in <code>kubectl get -o yaml</code> but never in these files.</dd>
+</dl>
+</div>
+
+<section class="col">
+  <h2>Four groups, four moments</h2>
+  <p>The files fall into four folders, and each folder is read by a different tool at a different time. Knowing which is the key to the whole repo.</p>
+</section>
+<figure>
+  <div class="fig">
+  <svg viewBox="0 0 1000 300" role="img" aria-label="cluster/kind-config.yaml is read by kind create cluster to make the node. manifests/base is applied once by kubectl apply -k. The registry overlay is rendered by kubectl kustomize and sed, then applied, instead of base. The Job templates are rendered by the agent pods with kube.create_job and create new Jobs every run.">
+    <defs><marker id="mm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-m"/></marker></defs>
+    <text x="20" y="16" class="sm">FILES</text><text x="360" y="16" class="sm">READ BY</text><text x="720" y="16" class="sm">RESULT</text>
+    <rect x="20" y="26" width="290" height="56" rx="6" class="box"/>
+    <text x="36" y="50" class="mo">cluster/kind-config.yaml</text><text x="36" y="68" class="sm">1 file</text>
+    <rect x="360" y="26" width="310" height="56" rx="6" class="box-g"/>
+    <text x="376" y="50" class="mo">kind create cluster</text><text x="376" y="68" class="sm">up.sh step 1, only if no cluster yet</text>
+    <rect x="720" y="26" width="260" height="56" rx="6" class="box"/>
+    <text x="736" y="50">one node container</text><text x="736" y="68" class="sm">port 8080 → 30080</text>
+
+    <rect x="20" y="96" width="290" height="56" rx="6" class="box-a"/>
+    <text x="36" y="120" class="mo">manifests/base/</text><text x="36" y="138" class="sm">6 manifests + kustomization.yaml</text>
+    <rect x="360" y="96" width="310" height="56" rx="6" class="box-g"/>
+    <text x="376" y="120" class="mo">kubectl apply -k manifests/base</text><text x="376" y="138" class="sm">up.sh step 3</text>
+    <rect x="720" y="96" width="260" height="56" rx="6" class="box-a"/>
+    <text x="736" y="120">permanent objects</text><text x="736" y="138" class="sm">namespace, PVC, RBAC, config, CronJob, dashboard</text>
+
+    <rect x="20" y="166" width="290" height="56" rx="6" class="box"/>
+    <text x="36" y="190" class="mo">manifests/overlays/registry/</text><text x="36" y="208" class="sm">3 files + kustomization.yaml, wraps base</text>
+    <rect x="360" y="166" width="310" height="56" rx="6" class="box-g"/>
+    <text x="376" y="190" class="mo">kubectl kustomize | sed | apply</text><text x="376" y="208" class="sm">up.sh with REGISTRY=… (instead of base)</text>
+    <rect x="720" y="166" width="260" height="56" rx="6" class="box"/>
+    <text x="736" y="190">same objects</text><text x="736" y="208" class="sm">registry images + pull secret</text>
+
+    <rect x="20" y="236" width="290" height="56" rx="6" class="box-b"/>
+    <text x="36" y="260" class="mo t-b">manifests/templates/</text><text x="36" y="278" class="sm">3 Job templates with ${…}</text>
+    <rect x="360" y="236" width="310" height="56" rx="6" class="box-g"/>
+    <text x="376" y="260" class="mo">kube.create_job() in agent pods</text><text x="376" y="278" class="sm">every run, per repo</text>
+    <rect x="720" y="236" width="260" height="56" rx="6" class="box-b"/>
+    <text x="736" y="260" class="t-b">new Jobs each run</text><text x="736" y="278" class="sm">clone, build-agent, build</text>
+
+    <path d="M310 54 H356" class="ln" marker-end="url(#mm)"/><path d="M670 54 H716" class="ln" marker-end="url(#mm)"/>
+    <path d="M310 124 H356" class="ln" marker-end="url(#mm)"/><path d="M670 124 H716" class="ln" marker-end="url(#mm)"/>
+    <path d="M310 194 H356" class="ln" marker-end="url(#mm)"/><path d="M670 194 H716" class="ln" marker-end="url(#mm)"/>
+    <path d="M310 264 H356" class="ln-b" marker-end="url(#mm)"/><path d="M670 264 H716" class="ln-b" marker-end="url(#mm)"/>
+  </svg>
+  </div>
+  <figcaption>Base and overlay are alternatives: up.sh applies one or the other. Templates are the only files used while builds run; they are amber throughout this page.</figcaption>
+</figure>
+
+<nav class="toc" aria-label="Files">
+<div class="tocg"><h4>Cluster</h4><p>Read by the kind CLI once, to create the cluster.</p><ul><li><a href="#kind-config"><code>kind-config.yaml</code></a> <span class="tk">kind Cluster</span></li></ul></div>
+<div class="tocg"><h4>Base</h4><p>Applied by up.sh with <code>kubectl apply -k manifests/base</code>. The platform's permanent objects.</p><ul><li><a href="#namespace"><code>00-namespace.yaml</code></a> <span class="tk">Namespace</span></li><li><a href="#pvc"><code>10-pvc.yaml</code></a> <span class="tk">PersistentVolumeClaim</span></li><li><a href="#rbac"><code>20-rbac.yaml</code></a> <span class="tk">ServiceAccount, Role, RoleBinding</span></li><li><a href="#config"><code>30-config.yaml</code></a> <span class="tk">ConfigMap ×2</span></li><li><a href="#cronjob"><code>40-orchestrator-cronjob.yaml</code></a> <span class="tk">CronJob</span></li><li><a href="#dashboard"><code>50-dashboard.yaml</code></a> <span class="tk">Deployment, Service</span></li><li><a href="#base-kustomization"><code>kustomization.yaml</code></a> <span class="tk">Kustomization</span></li></ul></div>
+<div class="tocg"><h4>Templates</h4><p>Never applied directly. The agents fill in placeholders and create a Job from each, every run.</p><ul><li><a href="#clone-job"><code>clone-job.yaml</code></a> <span class="tk">Job (template)</span></li><li><a href="#build-agent-job"><code>build-agent-job.yaml</code></a> <span class="tk">Job (template)</span></li><li><a href="#build-job"><code>build-job.yaml</code></a> <span class="tk">Job (template)</span></li></ul></div>
+<div class="tocg"><h4>Registry overlay</h4><p>Used instead of base when you run up.sh with <code>REGISTRY=…</code>.</p><ul><li><a href="#overlay-kustomization"><code>kustomization.yaml</code></a> <span class="tk">Kustomization</span></li><li><a href="#overlay-config"><code>platform-config.yaml</code></a> <span class="tk">ConfigMap patch</span></li><li><a href="#overlay-sa"><code>build-agent-serviceaccount.yaml</code></a> <span class="tk">ServiceAccount patch</span></li><li><a href="#overlay-default-sa"><code>default-serviceaccount.yaml</code></a> <span class="tk">ServiceAccount</span></li></ul></div>
+</nav>
+
+<h2 class="grp" id="group-cluster">Cluster</h2><p class="col gd">Read by the kind CLI once, to create the cluster.</p>
+<section class="mf" id="kind-config">
+  <div class="mfh"><h3><code>cluster/kind-config.yaml</code></h3><div class="pills"><span class="pill">kind Cluster</span></div></div>
+  <p class="col">Tells kind how to build the cluster. This is kind's own config format, not a Kubernetes object: it is read once by the kind CLI and never sent to the API server.</p>
+  <p class="used"><span>Used by</span> <code>kind create cluster --config</code> (up.sh step 1)</p>
+  <div class="split">
+    <pre class="y"><code><span class="k">kind</span>: Cluster
+<span class="k">apiVersion</span>: kind.x-k8s.io/v1alpha4
+<span class="k">nodes</span>:
+  - <span class="k">role</span>: control-plane
+    <span class="k">extraPortMappings</span>:
+      - <span class="k">containerPort</span>: 30080
+        <span class="k">hostPort</span>: 8080
+        <span class="k">protocol</span>: TCP</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>apiVersion /<wbr> kind</code></td><td class="val"><code>kind.x-k8s.io/v1alpha4 · Cluster</code></td><td>Identifies the kind config schema. <code>kubectl</code> would not understand this file.</td></tr><tr><td><code>nodes[].<wbr>role</code></td><td class="val"><code>control-plane</code></td><td>One node only. On a single-node cluster kind lets ordinary pods run on the control-plane node, so all Jobs, the dashboard and the PVC live on the same machine. Add <code>- role: worker</code> entries to get more nodes, but then the <code>ReadWriteOnce</code> PVC can only follow pods onto one of them.</td></tr><tr><td><code>extraPortMappings.<wbr>containerPort</code></td><td class="val"><code>30080</code></td><td>A port on the node container. It has to equal the dashboard Service's <code>nodePort</code> in <code>50-dashboard.yaml</code>.</td></tr><tr><td><code>extraPortMappings.<wbr>hostPort</code></td><td class="val"><code>8080</code></td><td>Docker publishes it on your Mac. This is the only reason <code>http://localhost:8080</code> works. Port mappings are fixed when the cluster is created; changing them means <code>down.sh</code> and <code>up.sh</code> again.</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+<h2 class="grp" id="group-base">Base</h2><p class="col gd">Applied by up.sh with <code>kubectl apply -k manifests/base</code>. The platform's permanent objects.</p>
+<section class="mf" id="namespace">
+  <div class="mfh"><h3><code>manifests/base/00-namespace.yaml</code></h3><div class="pills"><span class="pill">Namespace</span></div></div>
+  <p class="col">Creates the <code>builds</code> namespace that every other object lives in.</p>
+  <p class="used"><span>Used by</span> <code>kubectl apply -k manifests/base</code></p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: v1
+<span class="k">kind</span>: Namespace
+<span class="k">metadata</span>:
+  <span class="k">name</span>: builds
+  <span class="k">labels</span>:
+    <span class="k">app.kubernetes.io/part-of</span>: k8s-platform</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>metadata.<wbr>name</code></td><td class="val"><code>builds</code></td><td>Namespaced objects in the other files say <code>namespace: builds</code>. Names only need to be unique within one namespace.</td></tr><tr><td><code>metadata.<wbr>namespace</code></td><td class="val"><code>(none)</code></td><td>A Namespace is itself cluster-scoped, so it has no namespace field.</td></tr><tr><td><code>metadata.<wbr>labels</code></td><td class="val"><code>app.kubernetes.io/part-of: k8s-platform</code></td><td>One of Kubernetes' recommended labels. The platform puts it on most objects so you can select everything at once, e.g. <code>kubectl get jobs -l app.kubernetes.io/part-of=k8s-platform</code> (what <code>status.sh</code> and the dashboard do).</td></tr></tbody></table></div>
+  </div>
+  <div class="col after"><p>Deleting the namespace deletes everything inside it, PVC included. That's a quick reset that keeps the cluster.</p></div>
+</section>
+<section class="mf" id="pvc">
+  <div class="mfh"><h3><code>manifests/base/10-pvc.yaml</code></h3><div class="pills"><span class="pill">PersistentVolumeClaim</span></div></div>
+  <p class="col">Asks for 2Gi of disk that outlives any pod. The clone Job writes sources here and the build Job reads them in another pod.</p>
+  <p class="used"><span>Used by</span> <code>kubectl apply -k manifests/base</code>; mounted by every Job and the dashboard</p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: v1
+<span class="k">kind</span>: PersistentVolumeClaim
+<span class="k">metadata</span>:
+  <span class="k">name</span>: workspace
+  <span class="k">namespace</span>: builds
+  <span class="k">labels</span>:
+    <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+<span class="k">spec</span>:
+  <span class="k">accessModes</span>: [&quot;ReadWriteOnce&quot;]
+  <span class="k">resources</span>:
+    <span class="k">requests</span>:
+      <span class="k">storage</span>: 2Gi</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>spec.<wbr>accessModes</code></td><td class="val"><code>[&quot;ReadWriteOnce&quot;]</code></td><td>RWO means the volume can be mounted read-write by pods on <em>one node</em> at a time. It does not mean one pod. With one kind node, all pods share it. On a multi-node cluster you'd need <code>ReadWriteMany</code> from an NFS/EFS-style StorageClass.</td></tr><tr><td><code>spec.<wbr>resources.<wbr>requests.<wbr>storage</code></td><td class="val"><code>2Gi</code></td><td>The size asked for. The local-path provisioner kind uses does not enforce it (it's a plain directory), but cloud provisioners create a disk of this size.</td></tr><tr><td><code>spec.<wbr>storageClassName</code></td><td class="val"><code>(not set)</code></td><td>Omitted on purpose, so the cluster's default StorageClass is used: <code>standard</code> on kind (local-path, waits for the first pod before creating the volume) and the hostpath provisioner on Minikube. The same file works on both.</td></tr><tr><td><code>metadata.<wbr>name</code></td><td class="val"><code>workspace</code></td><td>What pods refer to with <code>persistentVolumeClaim.claimName: workspace</code>. Pods never name the PV itself.</td></tr></tbody></table></div>
+  </div>
+  <div class="col after"><p>The PV is created for you (dynamic provisioning). See it with <code>kubectl get pv</code>. Deleting the PVC deletes the PV and its data on kind, because the StorageClass's reclaim policy is <code>Delete</code>.</p></div>
+</section>
+<section class="mf" id="rbac">
+  <div class="mfh"><h3><code>manifests/base/20-rbac.yaml</code></h3><div class="pills"><span class="pill">ServiceAccount</span> <span class="pill">Role</span> <span class="pill">RoleBinding</span></div></div>
+  <p class="col">Three objects in one file, separated by <code>---</code>. Together they give pods running as <code>build-agent</code> the right to manage Jobs and ConfigMaps in <code>builds</code>, and nothing else.</p>
+  <p class="used"><span>Used by</span> <code>kubectl apply -k manifests/base</code>; used by orchestrator, build-agent and dashboard pods</p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: v1
+<span class="k">kind</span>: ServiceAccount
+<span class="k">metadata</span>:
+  <span class="k">name</span>: build-agent
+  <span class="k">namespace</span>: builds
+---
+<span class="k">apiVersion</span>: rbac.authorization.k8s.io/v1
+<span class="k">kind</span>: Role
+<span class="k">metadata</span>:
+  <span class="k">name</span>: build-agent
+  <span class="k">namespace</span>: builds
+<span class="k">rules</span>:
+  - <span class="k">apiGroups</span>: [&quot;batch&quot;]
+    <span class="k">resources</span>: [&quot;jobs&quot;]
+    <span class="k">verbs</span>: [&quot;create&quot;, &quot;get&quot;, &quot;list&quot;, &quot;watch&quot;, &quot;delete&quot;]
+  - <span class="k">apiGroups</span>: [&quot;batch&quot;]
+    <span class="k">resources</span>: [&quot;cronjobs&quot;]
+    <span class="k">verbs</span>: [&quot;get&quot;, &quot;list&quot;]
+  - <span class="k">apiGroups</span>: [&quot;&quot;]
+    <span class="k">resources</span>: [&quot;pods&quot;, &quot;pods/log&quot;]
+    <span class="k">verbs</span>: [&quot;get&quot;, &quot;list&quot;, &quot;watch&quot;]
+  - <span class="k">apiGroups</span>: [&quot;&quot;]
+    <span class="k">resources</span>: [&quot;configmaps&quot;]
+    <span class="k">verbs</span>: [&quot;get&quot;, &quot;list&quot;, &quot;create&quot;, &quot;patch&quot;, &quot;update&quot;]
+---
+<span class="k">apiVersion</span>: rbac.authorization.k8s.io/v1
+<span class="k">kind</span>: RoleBinding
+<span class="k">metadata</span>:
+  <span class="k">name</span>: build-agent
+  <span class="k">namespace</span>: builds
+<span class="k">subjects</span>:
+  - <span class="k">kind</span>: ServiceAccount
+    <span class="k">name</span>: build-agent
+    <span class="k">namespace</span>: builds
+<span class="k">roleRef</span>:
+  <span class="k">apiGroup</span>: rbac.authorization.k8s.io
+  <span class="k">kind</span>: Role
+  <span class="k">name</span>: build-agent</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>ServiceAccount metadata.<wbr>name</code></td><td class="val"><code>build-agent</code></td><td>An identity for pods. Pods opt in with <code>serviceAccountName: build-agent</code> and get a token for it mounted automatically.</td></tr><tr><td><code>Role rules[].<wbr>apiGroups</code></td><td class="val"><code>&quot;batch&quot; / &quot;&quot;</code></td><td>Which API group the resource belongs to. Jobs and CronJobs are in <code>batch</code>; pods and configmaps are in the core group, written as an empty string <code>""</code>. Find any resource's group with <code>kubectl api-resources</code>.</td></tr><tr><td><code>Role rules[].<wbr>resources</code></td><td class="val"><code>jobs, cronjobs, pods, pods/log, configmaps</code></td><td>Plural resource names. <code>pods/log</code> is a subresource: reading logs needs its own permission on top of reading pods.</td></tr><tr><td><code>Role rules[].<wbr>verbs</code></td><td class="val"><code>create, get, list, watch, delete, patch, update</code></td><td>What's allowed. Note what's absent: no <code>delete</code> on pods, no access to <code>secrets</code>. A Role is limited to its own namespace; a ClusterRole would be cluster-wide.</td></tr><tr><td><code>RoleBinding subjects</code></td><td class="val"><code>ServiceAccount build-agent in builds</code></td><td>Who gets the rights. Could also be a User or Group.</td></tr><tr><td><code>RoleBinding roleRef</code></td><td class="val"><code>Role build-agent</code></td><td>Which Role is granted. <code>roleRef</code> can't be changed after creation; to point at another Role you delete and recreate the binding.</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+<section class="mf" id="config">
+  <div class="mfh"><h3><code>manifests/base/30-config.yaml</code></h3><div class="pills"><span class="pill">ConfigMap ×2</span></div></div>
+  <p class="col">Two ConfigMaps. <code>platform-config</code> holds settings; <code>build-status</code> starts empty and is used as a small database of build records.</p>
+  <p class="used"><span>Used by</span> <code>kubectl apply -k manifests/base</code>; read via <code>envFrom</code>, patched by the agents</p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: v1
+<span class="k">kind</span>: ConfigMap
+<span class="k">metadata</span>:
+  <span class="k">name</span>: platform-config
+  <span class="k">namespace</span>: builds
+<span class="k">data</span>:
+  <span class="k">REPOS</span>: &quot;k8s-java8=https://github.com/tanmaypatil/k8s-java8.git,k8s-java17=https://github.com/tanmaypatil/k8s-java17.git&quot;
+  <span class="k">GIT_REF</span>: &quot;main&quot;
+  <span class="k">JAVA_8_IMAGE</span>: &quot;k8s-platform/java8-maven:dev&quot;
+  <span class="k">JAVA_17_IMAGE</span>: &quot;k8s-platform/java17-maven:dev&quot;
+  <span class="k">AGENT_IMAGE</span>: &quot;k8s-platform/agent:dev&quot;
+  <span class="k">GIT_IMAGE</span>: &quot;alpine/git:2.47.2&quot;
+  <span class="k">KEEP_RUNS</span>: &quot;10&quot;
+---
+<span class="k">apiVersion</span>: v1
+<span class="k">kind</span>: ConfigMap
+<span class="k">metadata</span>:
+  <span class="k">name</span>: build-status
+  <span class="k">namespace</span>: builds
+  <span class="k">labels</span>:
+    <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+<span class="k">data</span>: {}</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>platform-config data.<wbr>REPOS</code></td><td class="val"><code>&quot;k8s-java8=…,k8s-java17=…&quot;</code></td><td>The repos to build, <code>name=url</code> comma-separated. Names become parts of Job names, so they must be lowercase DNS labels (the orchestrator checks).</td></tr><tr><td><code>data.<wbr>JAVA_8_IMAGE /<wbr> JAVA_17_IMAGE</code></td><td class="val"><code>k8s-platform/java8-maven:dev …</code></td><td>The build agent scans its environment for <code>JAVA_&lt;N&gt;_IMAGE</code> keys to know which JDKs exist. Adding <code>JAVA_21_IMAGE</code> is all it takes to support Java 21.</td></tr><tr><td><code>data.<wbr>AGENT_IMAGE /<wbr> GIT_IMAGE</code></td><td class="val"><code>k8s-platform/agent:dev · alpine/git:2.47.2</code></td><td>Images for the Jobs the agents create at run time. kustomize can't rewrite images hidden inside strings, which is why the registry overlay patches these keys.</td></tr><tr><td><code>data.<wbr>KEEP_RUNS /<wbr> GIT_REF</code></td><td class="val"><code>&quot;10&quot; · &quot;main&quot;</code></td><td>All ConfigMap values are strings, so numbers are quoted. <code>envFrom</code> turns every key into an environment variable.</td></tr><tr><td><code>build-status data</code></td><td class="val"><code>{}</code></td><td>Empty at creation; the agents add one key per <code>&lt;build-id&gt;.&lt;repo&gt;</code>. A ConfigMap is capped at about 1 MiB, which is one reason old runs are pruned.</td></tr></tbody></table></div>
+  </div>
+  <div class="col after"><p>Environment variables from <code>envFrom</code> are read when a container starts. Editing <code>platform-config</code> affects the next Job, never one that is already running.</p></div>
+</section>
+<section class="mf" id="cronjob">
+  <div class="mfh"><h3><code>manifests/base/40-orchestrator-cronjob.yaml</code></h3><div class="pills"><span class="pill">CronJob</span></div></div>
+  <p class="col">A CronJob that never runs on a schedule. It stores the orchestrator's Job definition so trigger.sh and the dashboard can stamp out a copy on demand.</p>
+  <p class="used"><span>Used by</span> <code>kubectl apply -k manifests/base</code>; copied by <code>kubectl create job --from=cronjob/orchestrator</code></p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: batch/v1
+<span class="k">kind</span>: CronJob
+<span class="k">metadata</span>:
+  <span class="k">name</span>: orchestrator
+  <span class="k">namespace</span>: builds
+  <span class="k">labels</span>:
+    <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+<span class="k">spec</span>:
+  <span class="k">schedule</span>: &quot;0 0 1 1 *&quot;
+  <span class="k">suspend</span>: true
+  <span class="k">concurrencyPolicy</span>: Forbid
+  <span class="k">jobTemplate</span>:
+    <span class="k">metadata</span>:
+      <span class="k">labels</span>:
+        <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+        <span class="k">k8s-platform/stage</span>: orchestrator
+    <span class="k">spec</span>:
+      <span class="k">backoffLimit</span>: 0
+      <span class="k">ttlSecondsAfterFinished</span>: 86400
+      <span class="k">template</span>:
+        <span class="k">metadata</span>:
+          <span class="k">labels</span>:
+            <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+            <span class="k">k8s-platform/stage</span>: orchestrator
+        <span class="k">spec</span>:
+          <span class="k">serviceAccountName</span>: build-agent
+          <span class="k">restartPolicy</span>: Never
+          <span class="k">containers</span>:
+            - <span class="k">name</span>: orchestrator
+              <span class="k">image</span>: k8s-platform/agent:dev
+              <span class="k">imagePullPolicy</span>: IfNotPresent
+              <span class="k">command</span>: [&quot;python&quot;, &quot;/app/agent/orchestrator.py&quot;]
+              <span class="k">env</span>:
+                - <span class="k">name</span>: BUILD_ID<span class="c">   # downward API: the Job&#x27;s own name</span>
+                  <span class="k">valueFrom</span>:
+                    <span class="k">fieldRef</span>:
+                      <span class="k">fieldPath</span>: metadata.labels[&#x27;batch.kubernetes.io/job-name&#x27;]
+              <span class="k">envFrom</span>:
+                - <span class="k">configMapRef</span>:
+                    <span class="k">name</span>: platform-config
+              <span class="k">volumeMounts</span>:
+                - <span class="k">name</span>: workspace
+                  <span class="k">mountPath</span>: /workspace
+              <span class="k">resources</span>:
+                <span class="k">requests</span>: {<span class="k">cpu</span>: 50m, <span class="k">memory</span>: 64Mi}
+                <span class="k">limits</span>: {<span class="k">memory</span>: 256Mi}
+          <span class="k">volumes</span>:
+            - <span class="k">name</span>: workspace
+              <span class="k">persistentVolumeClaim</span>:
+                <span class="k">claimName</span>: workspace</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>spec.<wbr>schedule</code></td><td class="val"><code>&quot;0 0 1 1 *&quot;</code></td><td>Required by the schema, so it holds a placeholder (midnight on 1 January). It never fires because of <code>suspend</code>.</td></tr><tr><td><code>spec.<wbr>suspend</code></td><td class="val"><code>true</code></td><td>Stops the CronJob controller from creating Jobs on schedule. Manual <code>create job --from</code> still works.</td></tr><tr><td><code>spec.<wbr>concurrencyPolicy</code></td><td class="val"><code>Forbid</code></td><td>Only applies to runs the schedule would start. It does not stop two manual triggers from running at once.</td></tr><tr><td><code>jobTemplate.<wbr>spec.<wbr>backoffLimit</code></td><td class="val"><code>0</code></td><td>The orchestrator is not retried: a second attempt would create duplicate clone Jobs.</td></tr><tr><td><code>jobTemplate.<wbr>spec.<wbr>ttlSecondsAfterFinished</code></td><td class="val"><code>86400</code></td><td>Kubernetes deletes the finished orchestrator Job (and its pod and logs) after 24 hours.</td></tr><tr><td><code>template.<wbr>spec.<wbr>serviceAccountName</code></td><td class="val"><code>build-agent</code></td><td>The orchestrator creates Jobs and patches <code>build-status</code>, so it needs the RBAC identity.</td></tr><tr><td><code>template.<wbr>spec.<wbr>restartPolicy</code></td><td class="val"><code>Never</code></td><td>Jobs only allow <code>Never</code> or <code>OnFailure</code>. With Never, a crash fails the pod instead of restarting it in place.</td></tr><tr><td><code>containers[].<wbr>imagePullPolicy</code></td><td class="val"><code>IfNotPresent</code></td><td>Use the image already on the node (loaded by <code>kind load</code>) and don't contact a registry.</td></tr><tr><td><code>env BUILD_ID valueFrom.<wbr>fieldRef</code></td><td class="val"><code>metadata.labels[&#x27;batch.kubernetes.io/job-name&#x27;]</code></td><td>The <strong>downward API</strong>: the pod reads its own label, which the Job controller sets to the Job's name. So the Job name <code>run-20261101-140500</code> becomes the build id.</td></tr><tr><td><code>envFrom.<wbr>configMapRef</code></td><td class="val"><code>platform-config</code></td><td>Every key of the ConfigMap becomes an environment variable.</td></tr><tr><td><code>resources</code></td><td class="val"><code>requests cpu 50m, memory 64Mi · limits memory 256Mi</code></td><td>Requests are what the scheduler reserves; the memory limit is where the container gets OOM-killed. No CPU limit, so it's never throttled.</td></tr><tr><td><code>volumes[].<wbr>persistentVolumeClaim.<wbr>claimName</code></td><td class="val"><code>workspace</code></td><td>Mounted at <code>/workspace</code> so the orchestrator can prune old runs' folders.</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+<section class="mf" id="dashboard">
+  <div class="mfh"><h3><code>manifests/base/50-dashboard.yaml</code></h3><div class="pills"><span class="pill">Deployment</span> <span class="pill">Service</span></div></div>
+  <p class="col">The only long-running app. The Deployment keeps one pod alive; the Service gives it a stable address and a port on the node.</p>
+  <p class="used"><span>Used by</span> <code>kubectl apply -k manifests/base</code></p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: apps/v1
+<span class="k">kind</span>: Deployment
+<span class="k">metadata</span>:
+  <span class="k">name</span>: dashboard
+  <span class="k">namespace</span>: builds
+  <span class="k">labels</span>:
+    <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+    <span class="k">app</span>: dashboard
+<span class="k">spec</span>:
+  <span class="k">replicas</span>: 1
+  <span class="k">selector</span>:
+    <span class="k">matchLabels</span>:
+      <span class="k">app</span>: dashboard
+  <span class="k">template</span>:
+    <span class="k">metadata</span>:
+      <span class="k">labels</span>:
+        <span class="k">app</span>: dashboard
+    <span class="k">spec</span>:
+      <span class="k">serviceAccountName</span>: build-agent
+      <span class="k">containers</span>:
+        - <span class="k">name</span>: dashboard
+          <span class="k">image</span>: k8s-platform/agent:dev
+          <span class="k">imagePullPolicy</span>: IfNotPresent
+          <span class="k">command</span>: [&quot;python&quot;, &quot;/app/dashboard/server.py&quot;]
+          <span class="k">ports</span>:
+            - <span class="k">containerPort</span>: 8080
+          <span class="k">envFrom</span>:
+            - <span class="k">configMapRef</span>:
+                <span class="k">name</span>: platform-config
+          <span class="k">readinessProbe</span>:
+            <span class="k">httpGet</span>: {<span class="k">path</span>: /healthz, <span class="k">port</span>: 8080}
+            <span class="k">periodSeconds</span>: 5
+          <span class="k">volumeMounts</span>:
+            - <span class="k">name</span>: workspace
+              <span class="k">mountPath</span>: /workspace
+              <span class="k">readOnly</span>: true
+          <span class="k">resources</span>:
+            <span class="k">requests</span>: {<span class="k">cpu</span>: 50m, <span class="k">memory</span>: 64Mi}
+            <span class="k">limits</span>: {<span class="k">memory</span>: 256Mi}
+      <span class="k">volumes</span>:
+        - <span class="k">name</span>: workspace
+          <span class="k">persistentVolumeClaim</span>:
+            <span class="k">claimName</span>: workspace
+---
+<span class="k">apiVersion</span>: v1
+<span class="k">kind</span>: Service
+<span class="k">metadata</span>:
+  <span class="k">name</span>: dashboard
+  <span class="k">namespace</span>: builds
+<span class="k">spec</span>:
+  <span class="k">type</span>: NodePort
+  <span class="k">selector</span>:
+    <span class="k">app</span>: dashboard
+  <span class="k">ports</span>:
+    - <span class="k">port</span>: 80
+      <span class="k">targetPort</span>: 8080
+      <span class="k">nodePort</span>: 30080</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>Deployment spec.<wbr>replicas</code></td><td class="val"><code>1</code></td><td>How many identical pods to keep running. If the pod dies, a new one is created.</td></tr><tr><td><code>spec.<wbr>selector.<wbr>matchLabels</code></td><td class="val"><code>app: dashboard</code></td><td>How the Deployment finds its pods. It must match <code>template.metadata.labels</code>, and it can't be changed after creation.</td></tr><tr><td><code>template.<wbr>spec.<wbr>serviceAccountName</code></td><td class="val"><code>build-agent</code></td><td>The dashboard lists Jobs, reads <code>build-status</code>, and its Run button creates Jobs.</td></tr><tr><td><code>ports[].<wbr>containerPort</code></td><td class="val"><code>8080</code></td><td>Documents the port <code>server.py</code> listens on. Informational; the Service's <code>targetPort</code> is what routes traffic.</td></tr><tr><td><code>readinessProbe.<wbr>httpGet</code></td><td class="val"><code>/healthz on 8080, every 5s</code></td><td>Until this returns 200 the pod isn't "Ready": the Service won't send it traffic and <code>rollout status</code> keeps waiting. There's no livenessProbe, so a hung server isn't restarted automatically.</td></tr><tr><td><code>volumeMounts[].<wbr>readOnly</code></td><td class="val"><code>true</code></td><td>The dashboard only reads build logs from the PVC and can't damage them.</td></tr><tr><td><code>Service spec.<wbr>type</code></td><td class="val"><code>NodePort</code></td><td>Opens a port on every node. ClusterIP (the default) would be reachable only inside the cluster.</td></tr><tr><td><code>Service spec.<wbr>selector</code></td><td class="val"><code>app: dashboard</code></td><td>Sends traffic to Ready pods carrying this label: the same label the Deployment puts on its pods.</td></tr><tr><td><code>port /<wbr> targetPort /<wbr> nodePort</code></td><td class="val"><code>80 / 8080 / 30080</code></td><td>Three numbers: <code>port</code> is the Service's port inside the cluster (<code>http://dashboard.builds</code>), <code>targetPort</code> is the container's port, <code>nodePort</code> (30000-32767) is on the node and is what kind maps to localhost:8080.</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+<section class="mf" id="base-kustomization">
+  <div class="mfh"><h3><code>manifests/base/kustomization.yaml</code></h3><div class="pills"><span class="pill">Kustomization</span></div></div>
+  <p class="col">Lists the files that make up the platform. Like kind's config, it is a build instruction for a tool and is never stored in the cluster.</p>
+  <p class="used"><span>Used by</span> <code>kubectl apply -k manifests/base</code> (kustomize is built into kubectl)</p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: kustomize.config.k8s.io/v1beta1
+<span class="k">kind</span>: Kustomization
+<span class="k">resources</span>:
+  - 00-namespace.yaml
+  - 10-pvc.yaml
+  - 20-rbac.yaml
+  - 30-config.yaml
+  - 40-orchestrator-cronjob.yaml
+  - 50-dashboard.yaml</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>resources</code></td><td class="val"><code>00-namespace.yaml … 50-dashboard.yaml</code></td><td>The files to include. The number prefixes keep the list tidy, but kustomize sorts output by kind anyway (Namespace, ServiceAccount, Role, RoleBinding, ConfigMap, Service, PVC, Deployment, CronJob).</td></tr><tr><td><code>(missing) templates/<wbr></code></td><td class="val"></td><td>The Job templates are deliberately not listed: applying them would start Jobs, and their <code>${…}</code> placeholders aren't valid names.</td></tr></tbody></table></div>
+  </div>
+  <div class="col after"><p>Preview exactly what would be sent with <code>kubectl kustomize manifests/base</code>.</p></div>
+</section>
+<h2 class="grp" id="group-templates">Templates</h2><p class="col gd">Never applied directly. The agents fill in placeholders and create a Job from each, every run.</p>
+<section class="mf tmpl" id="clone-job">
+  <div class="mfh"><h3><code>manifests/templates/clone-job.yaml</code></h3><div class="pills"><span class="pill">Job (template)</span></div></div>
+  <p class="col">Shallow-clones one repo onto the PVC. Not valid YAML for Kubernetes as-is: Python's <code>string.Template</code> fills the <code>${…}</code> placeholders first.</p>
+  <p class="used"><span>Used by</span> the orchestrator, per repo per run (<code>kube.create_job</code>)</p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: batch/v1
+<span class="k">kind</span>: Job
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="v">${JOB_NAME}</span>
+  <span class="k">labels</span>:
+    <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+    <span class="k">k8s-platform/stage</span>: clone
+    <span class="k">k8s-platform/build-id</span>: <span class="v">${BUILD_ID}</span>
+    <span class="k">k8s-platform/repo</span>: <span class="v">${REPO}</span>
+<span class="k">spec</span>:
+  <span class="k">backoffLimit</span>: 2<span class="c">                # retry flaky network clones</span>
+  <span class="k">activeDeadlineSeconds</span>: 300
+  <span class="k">ttlSecondsAfterFinished</span>: 3600<span class="c">  # Kubernetes deletes the Job an hour after it ends</span>
+  <span class="k">template</span>:
+    <span class="k">metadata</span>:
+      <span class="k">labels</span>:
+        <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+        <span class="k">k8s-platform/stage</span>: clone
+        <span class="k">k8s-platform/build-id</span>: <span class="v">${BUILD_ID}</span>
+        <span class="k">k8s-platform/repo</span>: <span class="v">${REPO}</span>
+    <span class="k">spec</span>:
+      <span class="k">restartPolicy</span>: Never
+      <span class="k">automountServiceAccountToken</span>: false<span class="c">   # never calls the Kubernetes API, so no token</span>
+      <span class="k">containers</span>:
+        - <span class="k">name</span>: git
+          <span class="k">image</span>: <span class="v">${GIT_IMAGE}</span>
+          <span class="k">imagePullPolicy</span>: IfNotPresent
+          <span class="k">env</span>:
+            - <span class="k">name</span>: REPO_URL
+              <span class="k">value</span>: &quot;<span class="v">${REPO_URL}</span>&quot;
+            - <span class="k">name</span>: GIT_REF
+              <span class="k">value</span>: &quot;<span class="v">${GIT_REF}</span>&quot;
+            - <span class="k">name</span>: DEST
+              <span class="k">value</span>: /workspace/runs/<span class="v">${BUILD_ID}</span>/<span class="v">${REPO}</span>
+          <span class="k">envFrom</span>:
+            - <span class="k">configMapRef</span>: {<span class="k">name</span>: build-env, <span class="k">optional</span>: true}<span class="c">   # e.g. proxy settings</span>
+          <span class="k">command</span>: [&quot;/bin/sh&quot;, &quot;-c&quot;]
+          <span class="k">args</span>:
+            - &gt;-
+              rm -rf <span class="v2">$(DEST)</span> &amp;&amp; mkdir -p <span class="v2">$(DEST)</span> &amp;&amp;
+              git clone --depth 1 --branch <span class="v2">$(GIT_REF)</span> <span class="v2">$(REPO_URL)</span> <span class="v2">$(DEST)</span> &amp;&amp;
+              git -C <span class="v2">$(DEST)</span> log -1 --format=&#x27;cloned %h %s&#x27;
+          <span class="k">volumeMounts</span>:
+            - {<span class="k">name</span>: workspace, <span class="k">mountPath</span>: /workspace}
+            - {<span class="k">name</span>: extra-ca, <span class="k">mountPath</span>: /etc/extra-ca, <span class="k">readOnly</span>: true}
+          <span class="k">resources</span>:
+            <span class="k">requests</span>: {<span class="k">cpu</span>: 100m, <span class="k">memory</span>: 64Mi}
+            <span class="k">limits</span>: {<span class="k">memory</span>: 256Mi}
+      <span class="k">volumes</span>:
+        - <span class="k">name</span>: workspace
+          <span class="k">persistentVolumeClaim</span>: {<span class="k">claimName</span>: workspace}
+        - <span class="k">name</span>: extra-ca
+          <span class="k">configMap</span>: {<span class="k">name</span>: extra-ca, <span class="k">optional</span>: true}</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>metadata.<wbr>name</code></td><td class="val"><code>${JOB_NAME}</code></td><td>e.g. <code>clone-k8s-java8-run-20261101-140500</code>. Object names are capped at 63 characters here (the code truncates).</td></tr><tr><td><code>labels (on Job and pod template)</code></td><td class="val"><code>stage, build-id, repo</code></td><td>Repeated on the pod template so pods can be selected too. <code>kubectl get jobs -l k8s-platform/stage=clone</code> finds every clone.</td></tr><tr><td><code>spec.<wbr>backoffLimit</code></td><td class="val"><code>2</code></td><td>Up to two retries in new pods, for network hiccups.</td></tr><tr><td><code>spec.<wbr>activeDeadlineSeconds</code></td><td class="val"><code>300</code></td><td>A hard cap for the whole Job, retries included. After 5 minutes the Job fails with <code>DeadlineExceeded</code>.</td></tr><tr><td><code>spec.<wbr>ttlSecondsAfterFinished</code></td><td class="val"><code>3600</code></td><td>Auto-delete the Job and its pods an hour after it ends.</td></tr><tr><td><code>automountServiceAccountToken</code></td><td class="val"><code>false</code></td><td>git never calls the Kubernetes API, so the pod gets no credentials.</td></tr><tr><td><code>env DEST + args $(DEST)</code></td><td class="val"><code>/workspace/runs/${BUILD_ID}/${REPO}</code></td><td>Two kinds of placeholder: <code>${…}</code> is filled by Python before submitting; <code>$(DEST)</code> is expanded by Kubernetes from the container's own env vars when it starts.</td></tr><tr><td><code>command /<wbr> args</code></td><td class="val"><code>[&quot;/bin/sh&quot;,&quot;-c&quot;] + script</code></td><td><code>command</code> replaces the image's entrypoint, <code>args</code> its arguments. <code>&gt;-</code> folds the YAML lines into one shell command.</td></tr><tr><td><code>envFrom … optional: true</code></td><td class="val"><code>build-env</code></td><td>Load proxy settings if a <code>build-env</code> ConfigMap exists; if not, the pod still starts.</td></tr><tr><td><code>volumes extra-ca configMap optional</code></td><td class="val"><code>extra-ca</code></td><td>Mounts a ConfigMap as files (here a CA certificate), optional for the same reason.</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+<section class="mf tmpl" id="build-agent-job">
+  <div class="mfh"><h3><code>manifests/templates/build-agent-job.yaml</code></h3><div class="pills"><span class="pill">Job (template)</span></div></div>
+  <p class="col">Runs <code>build_agent.py</code>, which reads <code>pom.xml</code>, chooses a JDK image and creates the build Job.</p>
+  <p class="used"><span>Used by</span> the orchestrator, after the clone Job completes</p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: batch/v1
+<span class="k">kind</span>: Job
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="v">${JOB_NAME}</span>
+  <span class="k">labels</span>:
+    <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+    <span class="k">k8s-platform/stage</span>: build-agent
+    <span class="k">k8s-platform/build-id</span>: <span class="v">${BUILD_ID}</span>
+    <span class="k">k8s-platform/repo</span>: <span class="v">${REPO}</span>
+<span class="k">spec</span>:
+  <span class="k">backoffLimit</span>: 0
+  <span class="k">activeDeadlineSeconds</span>: 1200
+  <span class="k">ttlSecondsAfterFinished</span>: 3600
+  <span class="k">template</span>:
+    <span class="k">metadata</span>:
+      <span class="k">labels</span>:
+        <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+        <span class="k">k8s-platform/stage</span>: build-agent
+        <span class="k">k8s-platform/build-id</span>: <span class="v">${BUILD_ID}</span>
+        <span class="k">k8s-platform/repo</span>: <span class="v">${REPO}</span>
+    <span class="k">spec</span>:
+      <span class="k">serviceAccountName</span>: build-agent
+      <span class="k">restartPolicy</span>: Never
+      <span class="k">containers</span>:
+        - <span class="k">name</span>: build-agent
+          <span class="k">image</span>: <span class="v">${AGENT_IMAGE}</span>
+          <span class="k">imagePullPolicy</span>: IfNotPresent
+          <span class="k">command</span>: [&quot;python&quot;, &quot;/app/agent/build_agent.py&quot;]
+          <span class="k">env</span>:
+            - {<span class="k">name</span>: BUILD_ID, <span class="k">value</span>: &quot;<span class="v">${BUILD_ID}</span>&quot;}
+            - {<span class="k">name</span>: REPO, <span class="k">value</span>: &quot;<span class="v">${REPO}</span>&quot;}
+          <span class="k">envFrom</span>:
+            - <span class="k">configMapRef</span>: {<span class="k">name</span>: platform-config}
+          <span class="k">volumeMounts</span>:
+            - {<span class="k">name</span>: workspace, <span class="k">mountPath</span>: /workspace}
+          <span class="k">resources</span>:
+            <span class="k">requests</span>: {<span class="k">cpu</span>: 50m, <span class="k">memory</span>: 64Mi}
+            <span class="k">limits</span>: {<span class="k">memory</span>: 256Mi}
+      <span class="k">volumes</span>:
+        - <span class="k">name</span>: workspace
+          <span class="k">persistentVolumeClaim</span>: {<span class="k">claimName</span>: workspace}</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>serviceAccountName</code></td><td class="val"><code>build-agent</code></td><td>Unlike clone and build, this pod talks to the API (creates a Job, patches status), so it uses the RBAC identity and keeps its token.</td></tr><tr><td><code>spec.<wbr>backoffLimit</code></td><td class="val"><code>0</code></td><td>A retry would try to create a build Job that already exists.</td></tr><tr><td><code>spec.<wbr>activeDeadlineSeconds</code></td><td class="val"><code>1200</code></td><td>Longer than the build Job's 900s, so the agent outlives the build it is waiting on and can record the result.</td></tr><tr><td><code>env BUILD_ID /<wbr> REPO</code></td><td class="val"><code>value: &quot;${BUILD_ID}&quot;</code></td><td>Plain values filled in by the orchestrator: which run and which repo this agent handles.</td></tr><tr><td><code>envFrom platform-config</code></td><td class="val"></td><td>Brings in every <code>JAVA_&lt;N&gt;_IMAGE</code> the agent picks from.</td></tr><tr><td><code>image</code></td><td class="val"><code>${AGENT_IMAGE}</code></td><td>The same agent image as the orchestrator and dashboard, running a different script.</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+<section class="mf tmpl" id="build-job">
+  <div class="mfh"><h3><code>manifests/templates/build-job.yaml</code></h3><div class="pills"><span class="pill">Job (template)</span></div></div>
+  <p class="col">Runs <code>mvn package</code> in the matching JDK image against the sources on the PVC. This is the Job that does the real work.</p>
+  <p class="used"><span>Used by</span> the build agent, with the image it chose</p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: batch/v1
+<span class="k">kind</span>: Job
+<span class="k">metadata</span>:
+  <span class="k">name</span>: <span class="v">${JOB_NAME}</span>
+  <span class="k">labels</span>:
+    <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+    <span class="k">k8s-platform/stage</span>: build
+    <span class="k">k8s-platform/build-id</span>: <span class="v">${BUILD_ID}</span>
+    <span class="k">k8s-platform/repo</span>: <span class="v">${REPO}</span>
+    <span class="k">k8s-platform/java</span>: &quot;<span class="v">${JAVA_VERSION}</span>&quot;
+<span class="k">spec</span>:
+  <span class="k">backoffLimit</span>: 0<span class="c">                # a failed compile should not be retried</span>
+  <span class="k">activeDeadlineSeconds</span>: 900
+  <span class="k">ttlSecondsAfterFinished</span>: 3600
+  <span class="k">template</span>:
+    <span class="k">metadata</span>:
+      <span class="k">labels</span>:
+        <span class="k">app.kubernetes.io/part-of</span>: k8s-platform
+        <span class="k">k8s-platform/stage</span>: build
+        <span class="k">k8s-platform/build-id</span>: <span class="v">${BUILD_ID}</span>
+        <span class="k">k8s-platform/repo</span>: <span class="v">${REPO}</span>
+        <span class="k">k8s-platform/java</span>: &quot;<span class="v">${JAVA_VERSION}</span>&quot;
+    <span class="k">spec</span>:
+      <span class="k">restartPolicy</span>: Never
+      <span class="k">automountServiceAccountToken</span>: false<span class="c">   # never calls the Kubernetes API, so no token</span>
+      <span class="k">containers</span>:
+        - <span class="k">name</span>: maven
+          <span class="k">image</span>: <span class="v">${BUILD_IMAGE}</span>
+          <span class="k">imagePullPolicy</span>: IfNotPresent
+          <span class="k">command</span>: [&quot;run-build&quot;]
+          <span class="k">env</span>:
+            - {<span class="k">name</span>: SRC_DIR, <span class="k">value</span>: /workspace/runs/<span class="v">${BUILD_ID}</span>/<span class="v">${REPO}</span>}
+            - {<span class="k">name</span>: LOG_FILE, <span class="k">value</span>: /workspace/logs/<span class="v">${BUILD_ID}</span>/<span class="v">${REPO}</span>.log}
+            - {<span class="k">name</span>: ARTIFACT_DIR, <span class="k">value</span>: /workspace/artifacts/<span class="v">${BUILD_ID}</span>/<span class="v">${REPO}</span>}
+            - {<span class="k">name</span>: MAVEN_REPO, <span class="k">value</span>: /workspace/m2}
+            - {<span class="k">name</span>: MAVEN_GOALS, <span class="k">value</span>: package}
+          <span class="k">envFrom</span>:
+            - <span class="k">configMapRef</span>: {<span class="k">name</span>: build-env, <span class="k">optional</span>: true}<span class="c">   # e.g. proxy settings</span>
+          <span class="k">volumeMounts</span>:
+            - {<span class="k">name</span>: workspace, <span class="k">mountPath</span>: /workspace}
+            - {<span class="k">name</span>: extra-ca, <span class="k">mountPath</span>: /etc/extra-ca, <span class="k">readOnly</span>: true}
+          <span class="k">resources</span>:
+            <span class="k">requests</span>: {<span class="k">cpu</span>: 500m, <span class="k">memory</span>: 512Mi}
+            <span class="k">limits</span>: {<span class="k">memory</span>: 1Gi}
+      <span class="k">volumes</span>:
+        - <span class="k">name</span>: workspace
+          <span class="k">persistentVolumeClaim</span>: {<span class="k">claimName</span>: workspace}
+        - <span class="k">name</span>: extra-ca
+          <span class="k">configMap</span>: {<span class="k">name</span>: extra-ca, <span class="k">optional</span>: true}</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>labels k8s-platform/<wbr>java</code></td><td class="val"><code>&quot;${JAVA_VERSION}&quot;</code></td><td>Quoted because label values must be strings. Unquoted <code>17</code> is a YAML number and the API server would reject it.</td></tr><tr><td><code>spec.<wbr>backoffLimit</code></td><td class="val"><code>0</code></td><td>A compile error won't fix itself, so fail on the first attempt.</td></tr><tr><td><code>spec.<wbr>activeDeadlineSeconds</code></td><td class="val"><code>900</code></td><td>Kill a build that hangs after 15 minutes.</td></tr><tr><td><code>automountServiceAccountToken</code></td><td class="val"><code>false</code></td><td>Maven runs downloaded plugins; the pod gets no Kubernetes credentials it could leak.</td></tr><tr><td><code>image</code></td><td class="val"><code>${BUILD_IMAGE}</code></td><td><code>k8s-platform/java8-maven:dev</code> or <code>java17-maven:dev</code>: the decision the build agent made.</td></tr><tr><td><code>command</code></td><td class="val"><code>[&quot;run-build&quot;]</code></td><td>The script baked into both build images (<code>images/build-scripts/run-build.sh</code>).</td></tr><tr><td><code>env SRC_DIR /<wbr> LOG_FILE /<wbr> ARTIFACT_DIR /<wbr> MAVEN_REPO</code></td><td class="val"><code>/workspace/…</code></td><td>Where to read sources, write the log, put the jar, and keep the Maven cache. All paths on the shared PVC.</td></tr><tr><td><code>resources</code></td><td class="val"><code>requests cpu 500m, memory 512Mi · limits memory 1Gi</code></td><td>The biggest requests in the platform. If the node can't fit them, the pod stays <code>Pending</code>. Maven above 1Gi is OOM-killed (exit 137).</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+<h2 class="grp" id="group-registry-overlay">Registry overlay</h2><p class="col gd">Used instead of base when you run up.sh with <code>REGISTRY=…</code>.</p>
+<section class="mf" id="overlay-kustomization">
+  <div class="mfh"><h3><code>manifests/overlays/registry/kustomization.yaml</code></h3><div class="pills"><span class="pill">Kustomization</span></div></div>
+  <p class="col">Reuses the whole base and changes only what differs when images come from a registry. This is kustomize's base/overlay pattern.</p>
+  <p class="used"><span>Used by</span> up.sh when <code>REGISTRY</code> is set: <code>kubectl kustomize … | sed … | kubectl apply -f -</code></p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: kustomize.config.k8s.io/v1beta1
+<span class="k">kind</span>: Kustomization
+<span class="k">resources</span>:
+  - ../../base
+  - default-serviceaccount.yaml
+<span class="k">images</span>:
+  - <span class="k">name</span>: k8s-platform/agent
+    <span class="k">newName</span>: REGISTRY_PLACEHOLDER/agent
+    <span class="k">newTag</span>: TAG_PLACEHOLDER
+<span class="k">patches</span>:
+  - <span class="k">path</span>: platform-config.yaml
+  - <span class="k">path</span>: build-agent-serviceaccount.yaml</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>resources</code></td><td class="val"><code>../../base, default-serviceaccount.yaml</code></td><td>Pull in every base object, plus one extra object.</td></tr><tr><td><code>images</code></td><td class="val"><code>k8s-platform/agent → REGISTRY_PLACEHOLDER/agent:TAG_PLACEHOLDER</code></td><td>Rewrites <code>image:</code> fields in workloads kustomize understands (the CronJob and Deployment). It can't see image names inside ConfigMap strings.</td></tr><tr><td><code>patches</code></td><td class="val"><code>platform-config.yaml, build-agent-serviceaccount.yaml</code></td><td>Strategic-merge patches: matched to a base object by kind, name and namespace; only the fields they list are changed.</td></tr><tr><td><code>PLACEHOLDER values</code></td><td class="val"></td><td>kustomize has no variable substitution, so up.sh replaces the placeholders with <code>sed</code> after rendering.</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+<section class="mf" id="overlay-config">
+  <div class="mfh"><h3><code>manifests/overlays/registry/platform-config.yaml</code></h3><div class="pills"><span class="pill">ConfigMap patch</span></div></div>
+  <p class="col">Points the Jobs created at run time at registry images.</p>
+  <p class="used"><span>Used by</span> the overlay's <code>patches</code></p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: v1
+<span class="k">kind</span>: ConfigMap
+<span class="k">metadata</span>:
+  <span class="k">name</span>: platform-config
+  <span class="k">namespace</span>: builds
+<span class="k">data</span>:
+  <span class="k">JAVA_8_IMAGE</span>: &quot;REGISTRY_PLACEHOLDER/java8-maven:TAG_PLACEHOLDER&quot;
+  <span class="k">JAVA_17_IMAGE</span>: &quot;REGISTRY_PLACEHOLDER/java17-maven:TAG_PLACEHOLDER&quot;
+  <span class="k">AGENT_IMAGE</span>: &quot;REGISTRY_PLACEHOLDER/agent:TAG_PLACEHOLDER&quot;</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>data.<wbr>JAVA_8_IMAGE /<wbr> JAVA_17_IMAGE /<wbr> AGENT_IMAGE</code></td><td class="val"><code>REGISTRY_PLACEHOLDER/…:TAG_PLACEHOLDER</code></td><td>Only these three keys change; <code>REPOS</code>, <code>GIT_REF</code> and the rest are kept from the base by the merge.</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+<section class="mf" id="overlay-sa">
+  <div class="mfh"><h3><code>manifests/overlays/registry/build-agent-serviceaccount.yaml</code></h3><div class="pills"><span class="pill">ServiceAccount patch</span></div></div>
+  <p class="col">Adds registry credentials to the platform's ServiceAccount.</p>
+  <p class="used"><span>Used by</span> the overlay's <code>patches</code></p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: v1
+<span class="k">kind</span>: ServiceAccount
+<span class="k">metadata</span>:
+  <span class="k">name</span>: build-agent
+  <span class="k">namespace</span>: builds
+<span class="k">imagePullSecrets</span>:
+  - <span class="k">name</span>: registry-creds</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>imagePullSecrets</code></td><td class="val"><code>registry-creds</code></td><td>When a pod using this ServiceAccount is created, Kubernetes copies the pull secret into the pod spec. The orchestrator, build-agent and dashboard pods can then pull private images without any change to their manifests.</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+<section class="mf" id="overlay-default-sa">
+  <div class="mfh"><h3><code>manifests/overlays/registry/default-serviceaccount.yaml</code></h3><div class="pills"><span class="pill">ServiceAccount</span></div></div>
+  <p class="col">Gives the same pull secret to the clone and build pods, which don't set <code>serviceAccountName</code> and so run as <code>default</code>.</p>
+  <p class="used"><span>Used by</span> the overlay's <code>resources</code></p>
+  <div class="split">
+    <pre class="y"><code><span class="k">apiVersion</span>: v1
+<span class="k">kind</span>: ServiceAccount
+<span class="k">metadata</span>:
+  <span class="k">name</span>: default
+  <span class="k">namespace</span>: builds
+<span class="k">imagePullSecrets</span>:
+  - <span class="k">name</span>: registry-creds</code></pre>
+    <div class="tbl"><table><thead><tr><th>Field</th><th>Here</th><th>What it does</th></tr></thead><tbody><tr><td><code>metadata.<wbr>name</code></td><td class="val"><code>default</code></td><td>Kubernetes creates a <code>default</code> ServiceAccount in every namespace automatically. <code>kubectl apply</code> updates that existing account rather than creating a second one.</td></tr><tr><td><code>imagePullSecrets</code></td><td class="val"><code>registry-creds</code></td><td>If the secret doesn't exist (a public registry), pods still start; the kubelet just logs a warning.</td></tr></tbody></table></div>
+  </div>
+  
+</section>
+
+<section class="col">
+  <h2>Patterns that repeat across files</h2>
+  <h3>The three Job timers</h3>
+</section>
+<div class="tbl"><table>
+  <thead><tr><th>Job</th><th>backoffLimit</th><th>activeDeadlineSeconds</th><th>ttlSecondsAfterFinished</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>orchestrator (CronJob template)</td><td>0</td><td>none</td><td>86400 (24h)</td><td>A retry would duplicate the whole run; keep it a day for its logs.</td></tr>
+    <tr><td>clone</td><td>2</td><td>300</td><td>3600</td><td>Network failures are often transient.</td></tr>
+    <tr><td>build-agent</td><td>0</td><td>1200</td><td>3600</td><td>Must outlive the build it waits on.</td></tr>
+    <tr class="hl"><td>build</td><td>0</td><td>900</td><td>3600</td><td>Compile errors are deterministic.</td></tr>
+  </tbody>
+</table></div>
+<section class="col">
+  <p><code>backoffLimit</code> is how many times a failed pod is replaced. <code>activeDeadlineSeconds</code> caps the Job's total running time, across retries. <code>ttlSecondsAfterFinished</code> is garbage collection: after that long, Kubernetes deletes the finished Job and its pods.</p>
+
+  <h3>Requests and limits</h3>
+  <p>Every container sets a CPU and memory <strong>request</strong> (what the scheduler reserves) and a memory <strong>limit</strong> (past it, the container is OOM-killed with exit code 137). None sets a CPU limit, so a container can use spare CPU instead of being throttled. If requests add up to more than the node has, new pods wait in <code>Pending</code>.</p>
+
+  <h3>Optional references</h3>
+  <p><code>configMapRef: {name: build-env, optional: true}</code> and <code>configMap: {name: extra-ca, optional: true}</code> let one template work on a home network and behind a corporate proxy. Without <code>optional</code>, a missing ConfigMap keeps the pod stuck in <code>CreateContainerConfigError</code>.</p>
+
+  <h3>Labels as the query language</h3>
+  <p>Every object carries <code>app.kubernetes.io/part-of: k8s-platform</code>, and every Job adds <code>k8s-platform/stage</code>, <code>/build-id</code>, <code>/repo</code> (and <code>/java</code> for builds). The dashboard and <code>status.sh</code> use these instead of parsing names:</p>
+<pre><code>kubectl -n builds get jobs -l k8s-platform/stage=build -L k8s-platform/repo,k8s-platform/java
+kubectl -n builds get pods -l k8s-platform/build-id=run-20261101-140500</code></pre>
+
+  <h3>Explore a field yourself</h3>
+<pre><code>kubectl explain job.spec.backoffLimit
+kubectl explain pod.spec.containers.readinessProbe
+kubectl kustomize manifests/base | less          # exactly what up.sh applies
+kubectl -n builds get cronjob orchestrator -o yaml # stored object, with defaults and status</code></pre>
+</section>
+
+<footer>Based on <code>tanmaypatil/k8s-platform</code> at commit <code>9e0aea2</code>. Companion pages: architecture, up.sh sequence, trigger.sh sequence.<p style="margin-top:8px">All explainers: <a href="architecture.html">Architecture</a> · <a href="up-sequence.html">up.sh sequence</a> · <a href="trigger-sequence.html">trigger.sh sequence</a> · <a href="manifests.html">Manifest guide</a></p></footer>
+</main>
+
+</body>
+</html>

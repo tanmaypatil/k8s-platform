@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Build Platform Architecture</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a single reading column (~70ch) with wide figures that may break out to 1100px. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #16202c; --muted: #586476; --line: #d3dae4;
+  --accent: #2456c4; --accent-bg: #e8eefc;
+  --build: #b45f00; --build-bg: #fff1dc;
+  --ok: #1d7a4b; --bad: #b3261e; --ok-bg: #e3f4ea; --bad-bg: #fbe7e5;
+  --code-bg: #eef1f5;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e131a; --surface: #151c26; --ink: #e5eaf1; --muted: #97a2b3; --line: #2b3646;
+  --accent: #7ea4ff; --accent-bg: #1b2740;
+  --build: #ffb04a; --build-bg: #36270f;
+  --ok: #62d39c; --bad: #ff8b82; --ok-bg: #12301f; --bad-bg: #3a1614;
+  --code-bg: #1b2330; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e5eaf1; --muted: #97a2b3; --line: #2b3646;
+  --accent: #7ea4ff; --accent-bg: #1b2740;
+  --build: #ffb04a; --build-bg: #36270f;
+  --ok: #62d39c; --bad: #ff8b82; --ok-bg: #12301f; --bad-bg: #3a1614;
+  --code-bg: #1b2330; color-scheme: dark; }
+
+body { background: var(--bg); color: var(--ink); font: 16px/1.62 var(--f-body); }
+.page { max-width: 1100px; margin: 0 auto; padding-block: 40px 80px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.col { max-width: 70ch; }
+header.top { display: grid; gap: 10px; margin-bottom: 36px; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 27px; font-weight: 600; margin-top: 56px; margin-bottom: 12px; }
+h3 { font-size: 19px; font-weight: 600; margin-top: 28px; margin-bottom: 6px; }
+p { margin: 0 0 14px; }
+.lede { font-size: 18px; color: var(--muted); max-width: 66ch; }
+a { color: var(--accent); }
+code, .mono { font-family: var(--f-mono); font-size: .88em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto;
+  font: 13.5px/1.55 var(--f-mono); margin: 0 0 16px; }
+pre code { background: none; padding: 0; font-size: inherit; }
+ul, ol { padding-left: 22px; margin: 0 0 14px; }
+li { margin-bottom: 6px; }
+li::marker { color: var(--muted); }
+
+figure { margin: 22px 0 30px; }
+.fig { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; min-width: 760px; color: var(--muted); }
+figcaption { font-size: 14px; color: var(--muted); margin-top: 10px; max-width: 80ch; }
+
+/* SVG vocabulary (styled from page CSS so both themes work) */
+svg text { fill: var(--ink); font-family: var(--f-body); font-size: 13px; }
+svg .sm { font-size: 11.5px; fill: var(--muted); }
+svg .mo { font-family: var(--f-mono); font-size: 11.5px; }
+svg .hd { font-family: var(--f-display); font-weight: 600; font-size: 14px; }
+svg .zone { fill: none; stroke: var(--line); stroke-width: 1.5; }
+svg .zone-d { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+svg .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.4; }
+svg .box-a { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.4; }
+svg .box-b { fill: var(--build-bg); stroke: var(--build); stroke-width: 2.2; }
+svg .box-g { fill: var(--code-bg); stroke: var(--line); stroke-width: 1.2; }
+svg .t-b { fill: var(--build); }
+svg .t-a { fill: var(--accent); }
+svg .t-ok { fill: var(--ok); }
+svg .t-bad { fill: var(--bad); }
+svg .ln { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+svg .ln-a { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+svg .ln-b { stroke: var(--build); stroke-width: 2; fill: none; }
+svg .ln-d { stroke: var(--muted); stroke-width: 1.2; fill: none; stroke-dasharray: 4 4; }
+svg .life { stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 3 4; }
+svg .act { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1; }
+svg .act-b { fill: var(--build-bg); stroke: var(--build); stroke-width: 1.2; }
+svg .frame { fill: none; stroke: var(--muted); stroke-width: 1.1; }
+svg .tag { fill: var(--muted); }
+svg .tag-t { fill: var(--surface); font-family: var(--f-mono); font-size: 11px; font-weight: 500; }
+svg .head-a { fill: var(--accent); } svg .head-m { fill: var(--muted); } svg .head-b { fill: var(--build); }
+
+/* Concept cards, tables, callouts */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 18px 0 8px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.card h4 { margin: 0 0 4px; font: 600 15px/1.3 var(--f-display); }
+.card .kind { font: 500 11px/1 var(--f-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.card p { font-size: 14.5px; margin: 6px 0 0; }
+.card.build { border-color: var(--build); background: var(--build-bg); }
+.tbl { overflow-x: auto; margin: 16px 0 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.3 var(--f-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--code-bg); }
+tr:last-child td { border-bottom: none; }
+td code { white-space: nowrap; }
+tr.hl td { background: var(--build-bg); }
+.note { border-left: 3px solid var(--accent); background: var(--accent-bg); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 18px 0; max-width: 70ch; }
+.note.build { border-color: var(--build); background: var(--build-bg); }
+.note p:last-child { margin-bottom: 0; }
+.pill { display: inline-block; font: 500 11.5px/1 var(--f-mono); padding: 4px 7px; border-radius: 4px; background: var(--code-bg); color: var(--muted); border: 1px solid var(--line); }
+.pill.b { background: var(--build-bg); color: var(--build); border-color: var(--build); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; color: var(--muted); margin-top: 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 10px; border-radius: 2px; border: 1.5px solid var(--line); background: var(--surface); }
+.sw.a { border-color: var(--accent); background: var(--accent-bg); }
+.sw.b { border-color: var(--build); background: var(--build-bg); border-width: 2px; }
+.sw.d { border-style: dashed; border-color: var(--muted); background: none; }
+.steps { counter-reset: s; list-style: none; padding: 0; display: grid; gap: 14px; margin: 18px 0; }
+.steps > li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; margin: 0; }
+.steps > li::before { content: counter(s); font: 600 14px/30px var(--f-mono); text-align: center; width: 30px; height: 30px;
+  border-radius: 50%; background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent); }
+.steps > li.b::before { background: var(--build-bg); color: var(--build); border-color: var(--build); }
+.steps > li > div { min-width: 0; }
+.steps h3 { margin: 3px 0 4px; font-size: 17px; }
+.steps p { margin-bottom: 8px; }
+.steps pre { margin-bottom: 8px; }
+.try { font-size: 14px; color: var(--muted); }
+footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 520px) { body { font-size: 15.5px; } h2 { font-size: 23px; } }
+</style>
+</head>
+<body>
+<main class="page">
+<header class="top">
+  <div class="eyebrow">k8s-platform · part 1 of 3</div>
+  <h1>Build Platform Architecture</h1>
+  <p class="lede">What actually runs inside the kind cluster when you use <code>tanmaypatil/k8s-platform</code>, which pieces stay up all the time, and which ones are short-lived Jobs that appear for a single build and then go away. Build Jobs are drawn in amber throughout.</p>
+</header>
+
+<section class="col">
+  <h2>The picture in one sentence</h2>
+  <p>One long-running web app (the dashboard) and a stack of <em>Jobs</em> that run to completion: an orchestrator Job per build run, and for each repo a clone Job, a build-agent Job and a build Job. They all share one disk, the <code>workspace</code> PersistentVolumeClaim, and they record progress in one ConfigMap, <code>build-status</code>.</p>
+</section>
+
+<figure>
+  <div class="fig">
+  <svg viewBox="0 0 1040 720" role="img" aria-label="Deployment architecture: a kind node container on your Mac runs the control plane and the builds namespace. The namespace holds the dashboard Deployment and NodePort Service, RBAC objects, a suspended orchestrator CronJob, the orchestrator Job, two ConfigMaps, per-repo clone, build-agent and build Jobs, and the shared workspace PVC that every Job mounts.">
+    <defs>
+      <marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-m"/></marker>
+      <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-a"/></marker>
+      <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-b"/></marker>
+    </defs>
+
+    <!-- Mac -->
+    <rect x="8" y="8" width="1024" height="704" rx="14" class="zone"/>
+    <text x="24" y="34" class="hd">Your Mac</text>
+    <text x="24" y="52" class="sm">Docker Desktop / Colima</text>
+
+    <rect x="24" y="76" width="160" height="58" rx="6" class="box"/>
+    <text x="104" y="100" text-anchor="middle">Browser</text>
+    <text x="104" y="120" text-anchor="middle" class="mo">localhost:8080</text>
+    <text x="104" y="156" text-anchor="middle" class="sm">kind extraPortMappings</text>
+    <text x="104" y="174" text-anchor="middle" class="mo">8080 → node:30080</text>
+
+    <rect x="24" y="560" width="160" height="96" rx="6" class="box"/>
+    <text x="104" y="584" text-anchor="middle" class="hd">Internet</text>
+    <text x="104" y="604" text-anchor="middle" class="mo">github.com</text>
+    <text x="104" y="622" text-anchor="middle" class="mo">Maven Central</text>
+    <text x="104" y="642" text-anchor="middle" class="sm">pulled by Jobs</text>
+    <path d="M184 610 H244" class="ln" marker-end="url(#am)"/>
+
+    <!-- node -->
+    <rect x="208" y="40" width="808" height="656" rx="12" class="zone" style="stroke-width:2"/>
+    <text x="224" y="64" class="hd">kind node: one Docker container running all of Kubernetes</text>
+    <text x="1000" y="64" text-anchor="end" class="mo tag">k8s-platform-control-plane</text>
+
+    <!-- control plane -->
+    <rect x="230" y="80" width="176" height="54" rx="6" class="box-g"/>
+    <text x="318" y="102" text-anchor="middle">kube-apiserver</text>
+    <text x="318" y="121" text-anchor="middle" class="sm">every kubectl call lands here</text>
+    <rect x="418" y="80" width="200" height="54" rx="6" class="box-g"/>
+    <text x="518" y="102" text-anchor="middle">controller-manager</text>
+    <text x="518" y="121" text-anchor="middle" class="sm">Job, CronJob, Deployment loops</text>
+    <rect x="630" y="80" width="150" height="54" rx="6" class="box-g"/>
+    <text x="705" y="102" text-anchor="middle">scheduler + kubelet</text>
+    <text x="705" y="121" text-anchor="middle" class="sm">place and start pods</text>
+    <rect x="792" y="80" width="200" height="54" rx="6" class="box-g"/>
+    <text x="892" y="102" text-anchor="middle">local-path provisioner</text>
+    <text x="892" y="121" text-anchor="middle" class="sm">creates PVs on node disk</text>
+
+    <!-- namespace -->
+    <rect x="228" y="150" width="772" height="530" rx="10" class="zone-d"/>
+    <text x="244" y="172" class="hd t-a">namespace: builds</text>
+
+    <!-- browser to service -->
+    <path d="M184 105 H226 V212 H244" class="ln-a" marker-end="url(#aa)"/>
+
+    <!-- left column -->
+    <rect x="246" y="186" width="176" height="52" rx="6" class="box"/>
+    <text x="334" y="207" text-anchor="middle">Service dashboard</text>
+    <text x="334" y="226" text-anchor="middle" class="sm">NodePort 30080 → :8080</text>
+    <path d="M334 238 V260" class="ln" marker-end="url(#am)"/>
+    <rect x="246" y="262" width="176" height="74" rx="6" class="box"/>
+    <text x="334" y="284" text-anchor="middle">Deployment dashboard</text>
+    <text x="334" y="303" text-anchor="middle" class="sm">1 replica · probe /healthz</text>
+    <text x="334" y="323" text-anchor="middle" class="mo">pod: server.py</text>
+
+    <rect x="246" y="372" width="176" height="122" rx="6" class="box-a"/>
+    <text x="334" y="395" text-anchor="middle" class="hd">RBAC</text>
+    <text x="334" y="417" text-anchor="middle" class="mo">ServiceAccount</text>
+    <text x="334" y="433" text-anchor="middle" class="mo">Role</text>
+    <text x="334" y="449" text-anchor="middle" class="mo">RoleBinding</text>
+    <text x="334" y="467" text-anchor="middle" class="sm">all named build-agent</text>
+    <text x="334" y="483" text-anchor="middle" class="sm">identity for agent pods</text>
+
+    <!-- dashboard links -->
+    <path d="M422 322 H436 V556" class="ln-d" marker-end="url(#am)"/>
+    <text x="442" y="546" class="sm">mounts read-only</text>
+    <path d="M422 288 H450 V417 H458" class="ln" marker-end="url(#am)"/>
+    <text x="456" y="384" class="sm">reads</text>
+
+    <!-- middle column -->
+    <rect x="460" y="186" width="150" height="62" rx="6" class="box"/>
+    <text x="535" y="206" text-anchor="middle">CronJob orchestrator</text>
+    <text x="535" y="224" text-anchor="middle" class="mo">suspend: true</text>
+    <text x="535" y="240" text-anchor="middle" class="sm">a reusable Job template</text>
+    <path d="M535 248 V280" class="ln-a" marker-end="url(#aa)"/>
+    <text x="529" y="268" text-anchor="end" class="sm">--from</text>
+    <rect x="460" y="282" width="150" height="74" rx="6" class="box-a"/>
+    <text x="535" y="304" text-anchor="middle">Job run-&lt;ts&gt;</text>
+    <text x="535" y="322" text-anchor="middle" class="sm">orchestrator pod</text>
+    <text x="535" y="340" text-anchor="middle" class="mo">orchestrator.py</text>
+    <path d="M535 356 V390" class="ln" marker-end="url(#am)"/>
+    <text x="541" y="378" class="sm">patches</text>
+    <rect x="460" y="392" width="150" height="50" rx="6" class="box"/>
+    <text x="535" y="412" text-anchor="middle">ConfigMap</text>
+    <text x="535" y="430" text-anchor="middle" class="mo">build-status</text>
+    <rect x="460" y="456" width="150" height="50" rx="6" class="box"/>
+    <text x="535" y="476" text-anchor="middle">ConfigMap</text>
+    <text x="535" y="494" text-anchor="middle" class="mo">platform-config</text>
+
+    <!-- per-run jobs -->
+    <rect x="632" y="180" width="360" height="256" rx="8" class="zone-d"/>
+    <text x="644" y="199" class="sm">created per run · auto-deleted 1h after finishing</text>
+    <path d="M610 319 H624" class="ln-a"/>
+    <path d="M624 259 V355" class="ln-a"/>
+    <path d="M624 259 H638" class="ln-a" marker-end="url(#aa)"/>
+    <path d="M624 355 H638" class="ln-a" marker-end="url(#aa)"/>
+
+    <text x="642" y="222" class="mo tag">repo k8s-java8</text>
+    <rect x="640" y="230" width="96" height="58" rx="6" class="box"/>
+    <text x="688" y="253" text-anchor="middle">clone Job</text>
+    <text x="688" y="272" text-anchor="middle" class="mo">alpine/git</text>
+    <path d="M736 259 H750" class="ln" marker-end="url(#am)"/>
+    <rect x="752" y="230" width="96" height="58" rx="6" class="box"/>
+    <text x="800" y="253" text-anchor="middle">build-agent</text>
+    <text x="800" y="272" text-anchor="middle" class="mo">agent</text>
+    <path d="M848 259 H862" class="ln-b" marker-end="url(#ab)"/>
+    <rect x="864" y="230" width="120" height="58" rx="6" class="box-b"/>
+    <text x="924" y="253" text-anchor="middle" class="hd t-b">build Job</text>
+    <text x="924" y="272" text-anchor="middle" class="mo">java8-maven</text>
+
+    <text x="642" y="318" class="mo tag">repo k8s-java17</text>
+    <rect x="640" y="326" width="96" height="58" rx="6" class="box"/>
+    <text x="688" y="349" text-anchor="middle">clone Job</text>
+    <text x="688" y="368" text-anchor="middle" class="mo">alpine/git</text>
+    <path d="M736 355 H750" class="ln" marker-end="url(#am)"/>
+    <rect x="752" y="326" width="96" height="58" rx="6" class="box"/>
+    <text x="800" y="349" text-anchor="middle">build-agent</text>
+    <text x="800" y="368" text-anchor="middle" class="mo">agent</text>
+    <path d="M848 355 H862" class="ln-b" marker-end="url(#ab)"/>
+    <rect x="864" y="326" width="120" height="58" rx="6" class="box-b"/>
+    <text x="924" y="349" text-anchor="middle" class="hd t-b">build Job</text>
+    <text x="924" y="368" text-anchor="middle" class="mo">java17-maven</text>
+
+    <text x="644" y="408" class="sm">orchestrator creates clone, then build-agent.</text>
+    <text x="644" y="424" class="sm">build-agent picks the JDK and creates the build Job.</text>
+
+    <!-- mounts -->
+    <path d="M688 440 V556" class="ln-d" marker-end="url(#am)"/>
+    <path d="M800 440 V556" class="ln-d" marker-end="url(#am)"/>
+    <path d="M924 440 V556" class="ln-b" style="stroke-dasharray:4 4" marker-end="url(#ab)"/>
+    <text x="682" y="530" text-anchor="end" class="sm">mount /workspace</text>
+
+    <!-- PVC -->
+    <rect x="246" y="560" width="738" height="104" rx="8" class="box-g" style="stroke-width:1.6"/>
+    <text x="262" y="584" class="hd">PersistentVolumeClaim workspace</text>
+    <text x="262" y="602" class="sm">2Gi · ReadWriteOnce · bound to a PV that local-path created on the node's disk</text>
+    <rect x="262" y="616" width="156" height="30" rx="4" class="box"/>
+    <text x="340" y="636" text-anchor="middle" class="mo">runs/&lt;build&gt;/&lt;repo&gt;/</text>
+    <rect x="428" y="616" width="140" height="30" rx="4" class="box"/>
+    <text x="498" y="636" text-anchor="middle" class="mo">m2/ (Maven cache)</text>
+    <rect x="578" y="616" width="176" height="30" rx="4" class="box"/>
+    <text x="666" y="636" text-anchor="middle" class="mo">logs/&lt;build&gt;/&lt;repo&gt;.log</text>
+    <rect x="764" y="616" width="190" height="30" rx="4" class="box-b" style="stroke-width:1.4"/>
+    <text x="859" y="636" text-anchor="middle" class="mo">artifacts/&lt;build&gt;/&lt;repo&gt;/</text>
+  </svg>
+  </div>
+  <div class="legend">
+    <span><i class="sw b"></i>build Jobs (run Maven)</span>
+    <span><i class="sw a"></i>things that call the Kubernetes API</span>
+    <span><i class="sw d"></i>namespace or group boundary</span>
+  </div>
+  <figcaption>Everything lives in one Docker container on your Mac. The dashboard is the only long-running app. A run is one orchestrator Job plus three Jobs per repo, and every Job reads and writes the same PVC. Scroll sideways on a phone.</figcaption>
+</figure>
+
+<section class="col">
+  <h2>The Kubernetes objects, one by one</h2>
+  <p>Each card names the object as it appears in <code>manifests/base/</code> or <code>manifests/templates/</code>.</p>
+</section>
+<div class="grid">
+  <div class="card"><div class="kind">Namespace · 00-namespace.yaml</div><h4>builds</h4><p>A folder for objects. Every name below is unique only inside <code>builds</code>, and the RBAC Role only grants rights here.</p></div>
+  <div class="card"><div class="kind">PVC · 10-pvc.yaml</div><h4>workspace</h4><p>A request for 2Gi of disk. kind's default StorageClass hands it to the local-path provisioner, which creates a PersistentVolume (a directory on the node) and binds it. Pods mount the claim, never the PV directly.</p></div>
+  <div class="card"><div class="kind">ServiceAccount + Role + RoleBinding · 20-rbac.yaml</div><h4>build-agent</h4><p>An identity for pods, a list of allowed actions, and the link between them. The orchestrator, build agent and dashboard run as this account so they can create Jobs and patch ConfigMaps in <code>builds</code>, and nothing else.</p></div>
+  <div class="card"><div class="kind">ConfigMap · 30-config.yaml</div><h4>platform-config</h4><p>Settings as key/value pairs: <code>REPOS</code>, <code>GIT_REF</code>, <code>JAVA_8_IMAGE</code>, <code>JAVA_17_IMAGE</code>, <code>AGENT_IMAGE</code>, <code>KEEP_RUNS</code>. Injected into agent pods as environment variables with <code>envFrom</code>.</p></div>
+  <div class="card"><div class="kind">ConfigMap · 30-config.yaml</div><h4>build-status</h4><p>Used as a tiny database. Each key is <code>&lt;build-id&gt;.&lt;repo&gt;</code> and holds a JSON record with the stage, Java version, image and timings. Agents patch it; the dashboard reads it.</p></div>
+  <div class="card"><div class="kind">CronJob · 40-orchestrator-cronjob.yaml</div><h4>orchestrator</h4><p>Suspended, so its schedule never fires. It exists only as a stored Job template: <code>kubectl create job --from=cronjob/orchestrator</code> stamps out a fresh Job from it.</p></div>
+  <div class="card"><div class="kind">Deployment + Service · 50-dashboard.yaml</div><h4>dashboard</h4><p>A Deployment keeps one dashboard pod running and replaces it if it dies. The NodePort Service gives it a fixed port (30080) on the node, which kind maps to <code>localhost:8080</code>.</p></div>
+  <div class="card build"><div class="kind">Job templates · manifests/templates/</div><h4>clone, build-agent, build</h4><p>Not applied by <code>up.sh</code>. The agents fill in <code>${REPO}</code>, <code>${BUILD_ID}</code> and friends with Python's <code>string.Template</code> and pipe the YAML to <code>kubectl create -f -</code> at run time.</p></div>
+</div>
+
+<section class="col">
+  <h2>Build Jobs up close</h2>
+  <p>A <strong>Job</strong> is Kubernetes' object for work that should finish. The Job controller creates a pod, watches it, and marks the Job <code>Complete</code> when the pod exits 0 or <code>Failed</code> when retries run out. Compare that with a Deployment, which restarts its pod forever.</p>
+  <p>The build Job is the one that does the real work: it runs <code>mvn package</code> in a JDK image the build agent chose for that repo. Here is <code>manifests/templates/build-job.yaml</code>, trimmed, with what each line does.</p>
+</section>
+
+<pre><code>kind: Job
+metadata:
+  name: ${JOB_NAME}                       <span class="mo" style="color:var(--muted)"># build-k8s-java17-run-20261101-140500</span>
+  labels:
+    k8s-platform/stage: build             <span style="color:var(--muted)"># lets you query: kubectl get jobs -l k8s-platform/stage=build</span>
+    k8s-platform/java: "${JAVA_VERSION}"  <span style="color:var(--muted)"># which JDK was chosen, visible with -L</span>
+spec:
+  backoffLimit: 0                         <span style="color:var(--muted)"># a compile error won't fix itself: fail on the first try</span>
+  activeDeadlineSeconds: 900              <span style="color:var(--muted)"># kill the build after 15 minutes</span>
+  ttlSecondsAfterFinished: 3600           <span style="color:var(--muted)"># Kubernetes deletes the Job 1h after it ends</span>
+  template:
+    spec:
+      restartPolicy: Never                <span style="color:var(--muted)"># Jobs need Never or OnFailure</span>
+      automountServiceAccountToken: false <span style="color:var(--muted)"># Maven never calls the API, so no credentials in the pod</span>
+      containers:
+        - name: maven
+          image: ${BUILD_IMAGE}           <span style="color:var(--build)"># k8s-platform/java8-maven:dev or java17-maven:dev</span>
+          command: ["run-build"]
+          env:
+            - {name: SRC_DIR,   value: /workspace/runs/${BUILD_ID}/${REPO}}
+            - {name: MAVEN_REPO, value: /workspace/m2}     <span style="color:var(--muted)"># cache shared across runs</span>
+          resources:
+            requests: {cpu: 500m, memory: 512Mi}           <span style="color:var(--muted)"># scheduler reserves this much</span>
+            limits:   {memory: 1Gi}                        <span style="color:var(--muted)"># above this the pod is OOM-killed</span>
+          volumeMounts:
+            - {name: workspace, mountPath: /workspace}
+      volumes:
+        - name: workspace
+          persistentVolumeClaim: {claimName: workspace}</code></pre>
+
+<div class="note build col">
+  <p><strong>How the JDK is picked.</strong> <code>agent/build_agent.py</code> reads <code>pom.xml</code> and checks, in order, <code>maven-compiler-plugin</code> <code>&lt;release&gt;/&lt;target&gt;/&lt;source&gt;</code>, then the properties <code>maven.compiler.release</code>, <code>.target</code>, <code>.source</code> and <code>java.version</code>. <code>k8s-java8</code> declares <code>maven.compiler.target=1.8</code>, which becomes 8. <code>k8s-java17</code> declares <code>maven.compiler.release=17</code>. The agent then takes the lowest <code>JAVA_&lt;N&gt;_IMAGE</code> that is at least that version.</p>
+</div>
+
+<section class="col">
+  <h3>The four kinds of Job compared</h3>
+</section>
+<div class="tbl"><table>
+  <thead><tr><th>Job</th><th>Created by</th><th>Image</th><th>Retries</th><th>Deadline</th><th>Cleaned up</th><th>API token</th></tr></thead>
+  <tbody>
+    <tr><td><code>run-&lt;ts&gt;</code> orchestrator</td><td>you, via <code>trigger.sh</code> or the dashboard</td><td><code>agent</code></td><td>0</td><td>none</td><td>after 24h</td><td>yes, build-agent SA</td></tr>
+    <tr><td><code>clone-&lt;repo&gt;-&lt;ts&gt;</code></td><td>orchestrator</td><td><code>alpine/git</code></td><td>2 (flaky network)</td><td>300s</td><td>after 1h</td><td>no</td></tr>
+    <tr><td><code>build-agent-&lt;repo&gt;-&lt;ts&gt;</code></td><td>orchestrator</td><td><code>agent</code></td><td>0</td><td>1200s</td><td>after 1h</td><td>yes, build-agent SA</td></tr>
+    <tr class="hl"><td><strong><code>build-&lt;repo&gt;-&lt;ts&gt;</code></strong></td><td>build agent</td><td><code>java8-maven</code> or <code>java17-maven</code></td><td>0</td><td>900s</td><td>after 1h</td><td>no</td></tr>
+  </tbody>
+</table></div>
+
+<section class="col">
+  <p>The split matters for security. Only the three Python programs need to talk to Kubernetes, so only their pods get the ServiceAccount token. Clone and build pods run code fetched from the internet (git, Maven plugins), and they have no credentials to misuse.</p>
+
+  <h2>Why one shared PVC works here</h2>
+  <p>The clone Job writes sources, the build Job reads them a minute later in a different pod with a different image. That hand-off only works because both pods mount the same claim. <code>ReadWriteOnce</code> means "one node at a time", not "one pod at a time", and kind has a single node, so every pod can mount it at once. On a multi-node cloud cluster you would switch to a <code>ReadWriteMany</code> StorageClass such as NFS or EFS.</p>
+  <p>The <code>m2/</code> folder is why the second run is faster: Maven's downloaded dependencies survive on the PVC between runs, while the pods that downloaded them are long gone.</p>
+
+  <h3>Try it</h3>
+<pre><code>kubectl -n builds get pvc,pv
+kubectl -n builds get jobs -l k8s-platform/stage=build -L k8s-platform/repo,k8s-platform/java
+kubectl -n builds describe job build-k8s-java17-&lt;build-id&gt;
+kubectl -n builds exec deploy/dashboard -- ls -R /workspace/artifacts</code></pre>
+</section>
+
+<footer>Based on <code>tanmaypatil/k8s-platform</code> at commit <code>9e0aea2</code>. Part 2 covers <code>scripts/up.sh</code>; part 3 covers <code>scripts/trigger.sh</code>.<p style="margin-top:8px">All explainers: <a href="architecture.html">Architecture</a> · <a href="up-sequence.html">up.sh sequence</a> · <a href="trigger-sequence.html">trigger.sh sequence</a> · <a href="manifests.html">Manifest guide</a></p></footer>
+</main>
+
+</body>
+</html>

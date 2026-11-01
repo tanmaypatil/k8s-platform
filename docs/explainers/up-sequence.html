@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>What up.sh Builds</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a single reading column (~70ch) with wide figures that may break out to 1100px. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #16202c; --muted: #586476; --line: #d3dae4;
+  --accent: #2456c4; --accent-bg: #e8eefc;
+  --build: #b45f00; --build-bg: #fff1dc;
+  --ok: #1d7a4b; --bad: #b3261e; --ok-bg: #e3f4ea; --bad-bg: #fbe7e5;
+  --code-bg: #eef1f5;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e131a; --surface: #151c26; --ink: #e5eaf1; --muted: #97a2b3; --line: #2b3646;
+  --accent: #7ea4ff; --accent-bg: #1b2740;
+  --build: #ffb04a; --build-bg: #36270f;
+  --ok: #62d39c; --bad: #ff8b82; --ok-bg: #12301f; --bad-bg: #3a1614;
+  --code-bg: #1b2330; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e5eaf1; --muted: #97a2b3; --line: #2b3646;
+  --accent: #7ea4ff; --accent-bg: #1b2740;
+  --build: #ffb04a; --build-bg: #36270f;
+  --ok: #62d39c; --bad: #ff8b82; --ok-bg: #12301f; --bad-bg: #3a1614;
+  --code-bg: #1b2330; color-scheme: dark; }
+
+body { background: var(--bg); color: var(--ink); font: 16px/1.62 var(--f-body); }
+.page { max-width: 1100px; margin: 0 auto; padding-block: 40px 80px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.col { max-width: 70ch; }
+header.top { display: grid; gap: 10px; margin-bottom: 36px; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 27px; font-weight: 600; margin-top: 56px; margin-bottom: 12px; }
+h3 { font-size: 19px; font-weight: 600; margin-top: 28px; margin-bottom: 6px; }
+p { margin: 0 0 14px; }
+.lede { font-size: 18px; color: var(--muted); max-width: 66ch; }
+a { color: var(--accent); }
+code, .mono { font-family: var(--f-mono); font-size: .88em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto;
+  font: 13.5px/1.55 var(--f-mono); margin: 0 0 16px; }
+pre code { background: none; padding: 0; font-size: inherit; }
+ul, ol { padding-left: 22px; margin: 0 0 14px; }
+li { margin-bottom: 6px; }
+li::marker { color: var(--muted); }
+
+figure { margin: 22px 0 30px; }
+.fig { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; min-width: 760px; color: var(--muted); }
+figcaption { font-size: 14px; color: var(--muted); margin-top: 10px; max-width: 80ch; }
+
+/* SVG vocabulary (styled from page CSS so both themes work) */
+svg text { fill: var(--ink); font-family: var(--f-body); font-size: 13px; }
+svg .sm { font-size: 11.5px; fill: var(--muted); }
+svg .mo { font-family: var(--f-mono); font-size: 11.5px; }
+svg .hd { font-family: var(--f-display); font-weight: 600; font-size: 14px; }
+svg .zone { fill: none; stroke: var(--line); stroke-width: 1.5; }
+svg .zone-d { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+svg .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.4; }
+svg .box-a { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.4; }
+svg .box-b { fill: var(--build-bg); stroke: var(--build); stroke-width: 2.2; }
+svg .box-g { fill: var(--code-bg); stroke: var(--line); stroke-width: 1.2; }
+svg .t-b { fill: var(--build); }
+svg .t-a { fill: var(--accent); }
+svg .t-ok { fill: var(--ok); }
+svg .t-bad { fill: var(--bad); }
+svg .ln { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+svg .ln-a { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+svg .ln-b { stroke: var(--build); stroke-width: 2; fill: none; }
+svg .ln-d { stroke: var(--muted); stroke-width: 1.2; fill: none; stroke-dasharray: 4 4; }
+svg .life { stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 3 4; }
+svg .act { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1; }
+svg .act-b { fill: var(--build-bg); stroke: var(--build); stroke-width: 1.2; }
+svg .frame { fill: none; stroke: var(--muted); stroke-width: 1.1; }
+svg .tag { fill: var(--muted); }
+svg .tag-t { fill: var(--surface); font-family: var(--f-mono); font-size: 11px; font-weight: 500; }
+svg .head-a { fill: var(--accent); } svg .head-m { fill: var(--muted); } svg .head-b { fill: var(--build); }
+
+/* Concept cards, tables, callouts */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 18px 0 8px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.card h4 { margin: 0 0 4px; font: 600 15px/1.3 var(--f-display); }
+.card .kind { font: 500 11px/1 var(--f-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.card p { font-size: 14.5px; margin: 6px 0 0; }
+.card.build { border-color: var(--build); background: var(--build-bg); }
+.tbl { overflow-x: auto; margin: 16px 0 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.3 var(--f-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--code-bg); }
+tr:last-child td { border-bottom: none; }
+td code { white-space: nowrap; }
+tr.hl td { background: var(--build-bg); }
+.note { border-left: 3px solid var(--accent); background: var(--accent-bg); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 18px 0; max-width: 70ch; }
+.note.build { border-color: var(--build); background: var(--build-bg); }
+.note p:last-child { margin-bottom: 0; }
+.pill { display: inline-block; font: 500 11.5px/1 var(--f-mono); padding: 4px 7px; border-radius: 4px; background: var(--code-bg); color: var(--muted); border: 1px solid var(--line); }
+.pill.b { background: var(--build-bg); color: var(--build); border-color: var(--build); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; color: var(--muted); margin-top: 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 10px; border-radius: 2px; border: 1.5px solid var(--line); background: var(--surface); }
+.sw.a { border-color: var(--accent); background: var(--accent-bg); }
+.sw.b { border-color: var(--build); background: var(--build-bg); border-width: 2px; }
+.sw.d { border-style: dashed; border-color: var(--muted); background: none; }
+.steps { counter-reset: s; list-style: none; padding: 0; display: grid; gap: 14px; margin: 18px 0; }
+.steps > li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; margin: 0; }
+.steps > li::before { content: counter(s); font: 600 14px/30px var(--f-mono); text-align: center; width: 30px; height: 30px;
+  border-radius: 50%; background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent); }
+.steps > li.b::before { background: var(--build-bg); color: var(--build); border-color: var(--build); }
+.steps > li > div { min-width: 0; }
+.steps h3 { margin: 3px 0 4px; font-size: 17px; }
+.steps p { margin-bottom: 8px; }
+.steps pre { margin-bottom: 8px; }
+.try { font-size: 14px; color: var(--muted); }
+footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 520px) { body { font-size: 15.5px; } h2 { font-size: 23px; } }
+</style>
+</head>
+<body>
+<main class="page">
+<header class="top">
+  <div class="eyebrow">k8s-platform · part 2 of 3</div>
+  <h1>What up.sh Builds</h1>
+  <p class="lede">A step-by-step trace of <code>scripts/up.sh</code>: how the kind cluster comes up, how the images get inside it, the order in which Kubernetes objects are created, and how the ServiceAccount and RBAC rules decide what the platform's pods are allowed to do.</p>
+</header>
+
+<section class="col">
+  <h2>The whole run as a sequence</h2>
+  <p>Read top to bottom. Solid arrows are commands up.sh sends; dashed arrows are things that happen as a result. The default path (kind, local images) is shown. The registry path is at the end of the page.</p>
+</section>
+
+<figure>
+  <div class="fig">
+  <svg viewBox="0 0 1000 870" role="img" aria-label="Sequence of up.sh: check or create the kind cluster and switch context; docker build and kind load three images; kubectl apply -k creates Namespace, ServiceAccount, Role, RoleBinding, ConfigMaps, Service, PVC, Deployment and CronJob; controllers create the dashboard pod and bind the PVC; rollout restart and rollout status wait until the dashboard is ready; up.sh prints the URL.">
+    <defs>
+      <marker id="um" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-m"/></marker>
+      <marker id="ua" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-a"/></marker>
+    </defs>
+
+    <!-- participants -->
+    <rect x="10" y="14" width="100" height="40" rx="6" class="box"/><text x="60" y="39" text-anchor="middle" class="hd">You</text>
+    <rect x="130" y="14" width="120" height="40" rx="6" class="box-a"/><text x="190" y="39" text-anchor="middle" class="hd">up.sh</text>
+    <rect x="270" y="14" width="140" height="40" rx="6" class="box"/><text x="340" y="39" text-anchor="middle" class="hd">Docker + kind CLI</text>
+    <rect x="445" y="14" width="150" height="40" rx="6" class="box"/><text x="520" y="39" text-anchor="middle" class="hd">kube-apiserver</text>
+    <rect x="770" y="14" width="180" height="40" rx="6" class="box"/><text x="860" y="39" text-anchor="middle" class="hd">controllers + kubelet</text>
+    <line x1="60" y1="54" x2="60" y2="860" class="life"/>
+    <line x1="190" y1="54" x2="190" y2="860" class="life"/>
+    <line x1="340" y1="54" x2="340" y2="860" class="life"/>
+    <line x1="520" y1="54" x2="520" y2="860" class="life"/>
+    <line x1="860" y1="54" x2="860" y2="860" class="life"/>
+
+    <!-- start -->
+    <path d="M60 78 H186" class="ln" marker-end="url(#um)"/>
+    <text x="124" y="72" text-anchor="middle" class="mo">./scripts/up.sh</text>
+
+    <!-- frame 1 -->
+    <rect x="20" y="90" width="970" height="140" rx="4" class="frame"/>
+    <rect x="20" y="90" width="92" height="20" class="tag"/><text x="28" y="104" class="tag-t">1 · cluster</text>
+    <path d="M190 124 H336" class="ln-a" marker-end="url(#ua)"/>
+    <text x="265" y="118" text-anchor="middle" class="mo">kind get clusters</text>
+    <path d="M340 136 h30 v20 h-26" class="ln" marker-end="url(#um)"/>
+    <text x="378" y="146" class="mo">kind create cluster --config cluster/kind-config.yaml</text>
+    <text x="378" y="162" class="sm">only if "k8s-platform" is not listed. Starts the node container.</text>
+    <path d="M340 190 H516" class="ln-d" marker-end="url(#um)"/>
+    <text x="430" y="184" text-anchor="middle" class="sm">boots control plane</text>
+    <path d="M190 210 h30 v14 h-26" class="ln" marker-end="url(#um)"/>
+    <text x="228" y="218" class="mo">kubectl config use-context kind-k8s-platform</text>
+
+    <!-- frame 2 -->
+    <rect x="20" y="242" width="970" height="96" rx="4" class="frame"/>
+    <rect x="20" y="242" width="88" height="20" class="tag"/><text x="28" y="256" class="tag-t">2 · images</text>
+    <path d="M190 284 H336" class="ln-a" marker-end="url(#ua)"/>
+    <text x="265" y="278" text-anchor="middle" class="mo">docker build ×3</text>
+    <text x="350" y="288" class="sm">java8-maven, java17-maven, agent (all tagged :dev)</text>
+    <path d="M190 312 H336" class="ln-a" marker-end="url(#ua)"/>
+    <text x="265" y="306" text-anchor="middle" class="mo">kind load ×3</text>
+    <path d="M340 326 H856" class="ln-d" marker-end="url(#um)"/>
+    <text x="600" y="320" text-anchor="middle" class="sm">image tarballs copied into the node's containerd</text>
+
+    <!-- frame 3 -->
+    <rect x="20" y="350" width="970" height="340" rx="4" class="frame"/>
+    <rect x="20" y="350" width="108" height="20" class="tag"/><text x="28" y="364" class="tag-t">3 · manifests</text>
+    <path d="M190 392 H514" class="ln-a" marker-end="url(#ua)"/>
+    <text x="355" y="386" text-anchor="middle" class="mo">kubectl apply -k manifests/base</text>
+    <rect x="514" y="392" width="12" height="190" class="act"/>
+    <text x="538" y="412" class="mo">Namespace builds</text>
+    <text x="538" y="430" class="mo t-a">ServiceAccount build-agent</text>
+    <text x="538" y="448" class="mo t-a">Role build-agent</text>
+    <text x="538" y="466" class="mo t-a">RoleBinding build-agent</text>
+    <text x="538" y="484" class="mo">ConfigMap platform-config, build-status</text>
+    <text x="538" y="502" class="mo">Service dashboard (NodePort 30080)</text>
+    <text x="538" y="520" class="mo">PVC workspace (Pending)</text>
+    <text x="538" y="538" class="mo">Deployment dashboard</text>
+    <text x="538" y="556" class="mo">CronJob orchestrator (suspend: true)</text>
+    <text x="538" y="574" class="sm">each one checked, stored in etcd</text>
+    <path d="M520 596 H856" class="ln-d" marker-end="url(#um)"/>
+    <text x="690" y="590" text-anchor="middle" class="sm">controllers see new objects (watch)</text>
+    <rect x="854" y="596" width="12" height="84" class="act"/>
+    <text x="846" y="614" text-anchor="end" class="sm">Deployment → ReplicaSet → Pod</text>
+    <text x="846" y="630" text-anchor="end" class="sm">scheduler binds the pod to the node</text>
+    <text x="846" y="646" text-anchor="end" class="sm">pod uses the PVC → local-path creates PV, binds</text>
+    <text x="846" y="662" text-anchor="end" class="sm">kubelet: image already present, mount PVC + SA token</text>
+    <text x="846" y="678" text-anchor="end" class="sm">container starts: python server.py</text>
+
+    <!-- frame 4 -->
+    <rect x="20" y="702" width="970" height="124" rx="4" class="frame"/>
+    <rect x="20" y="702" width="86" height="20" class="tag"/><text x="28" y="716" class="tag-t">4 · rollout</text>
+    <path d="M190 744 H514" class="ln-a" marker-end="url(#ua)"/>
+    <text x="355" y="738" text-anchor="middle" class="mo">kubectl rollout restart deploy/dashboard</text>
+    <path d="M520 760 H856" class="ln-d" marker-end="url(#um)"/>
+    <text x="690" y="754" text-anchor="middle" class="sm">new ReplicaSet, new pod with the rebuilt image</text>
+    <path d="M190 788 H514" class="ln-a" marker-end="url(#ua)"/>
+    <text x="355" y="782" text-anchor="middle" class="mo">kubectl rollout status --timeout=180s</text>
+    <path d="M520 814 H194" class="ln-d" marker-end="url(#um)"/>
+    <text x="355" y="808" text-anchor="middle" class="sm">rolled out (readiness probe /healthz passing)</text>
+
+    <path d="M190 848 H64" class="ln" marker-end="url(#um)"/>
+    <text x="124" y="842" text-anchor="middle" class="mo">localhost:8080</text>
+  </svg>
+  </div>
+  <figcaption>up.sh talks to two things: Docker/kind (for the node and the images) and the API server (for every Kubernetes object). It never starts a pod directly. Controllers inside the cluster react to the objects it creates. The three blue rows are the identity and permissions for the platform's pods.</figcaption>
+</figure>
+
+<section class="col">
+  <h2>Step by step</h2>
+</section>
+<ol class="steps col">
+  <li><div>
+    <h3>Create the cluster, or reuse it</h3>
+    <p><code>kind get clusters | grep -qx k8s-platform || kind create cluster …</code> makes the script safe to run twice. kind starts one Docker container that runs a full Kubernetes control plane plus a kubelet, so the "cluster" is a single node. <code>cluster/kind-config.yaml</code> adds one port mapping: host port 8080 goes to port 30080 on the node, which is where the dashboard's NodePort Service will listen.</p>
+    <p>kind also writes a kubeconfig context named <code>kind-k8s-platform</code> with admin credentials. <code>kubectl config use-context</code> makes every later <code>kubectl</code> call in the script go to this cluster. With <code>CLUSTER_TOOL=minikube</code> the same step runs <code>minikube start --cpus 4 --memory 6g</code> instead.</p>
+  </div></li>
+  <li><div>
+    <h3>Build the images and load them into the node</h3>
+    <p>Three images are built on your Mac's Docker: <code>java8-maven</code> and <code>java17-maven</code> (JDK + Maven + <code>run-build</code> script) and <code>agent</code> (Python + kubectl + the orchestrator, build agent, dashboard and Job templates).</p>
+    <p>The node is a separate container with its own image store (containerd), so it cannot see your Mac's Docker images. <code>kind load docker-image</code> copies each one in. Every manifest uses <code>imagePullPolicy: IfNotPresent</code>, so the kubelet uses the loaded copy and never tries to pull <code>k8s-platform/agent:dev</code> from a registry that doesn't exist.</p>
+  </div></li>
+  <li><div>
+    <h3>Apply the base manifests</h3>
+    <p><code>kubectl apply -k manifests/base</code> runs kustomize, which reads <code>kustomization.yaml</code>, collects the six files and sends the objects to the API server. kustomize sorts objects by kind before sending, so the actual order is the one in the diagram: Namespace first (everything else lives in it), then the ServiceAccount, Role and RoleBinding, ConfigMaps, the Service, the PVC, and the workloads last.</p>
+    <p>For each object the API server authenticates you (the admin context from step 1), checks you're authorized, runs admission, and stores it in etcd. <code>apply</code> is declarative: on a second run it compares and only changes what differs.</p>
+  </div></li>
+  <li><div>
+    <h3>Controllers bring the objects to life</h3>
+    <p>Storing a Deployment doesn't start anything by itself. The Deployment controller creates a ReplicaSet, which creates a Pod. The scheduler assigns the pod to the only node. The pod references the <code>workspace</code> claim, and kind's default StorageClass waits for that first consumer before provisioning: the local-path provisioner then creates a PersistentVolume (a directory on the node) and binds the claim to it. The kubelet mounts the volume and the ServiceAccount token and starts <code>server.py</code>.</p>
+    <p>The CronJob is stored too, but <code>suspend: true</code> means the CronJob controller never creates a Job from it. Nothing builds until you trigger a run.</p>
+  </div></li>
+  <li><div>
+    <h3>Restart and wait for the dashboard</h3>
+    <p>If you rebuilt the agent image, it still has the same tag (<code>:dev</code>), so the Deployment spec hasn't changed and Kubernetes has no reason to replace the pod. <code>kubectl rollout restart</code> adds a timestamp annotation to the pod template. That changes the template, so the Deployment rolls out a new ReplicaSet and a new pod that runs the freshly loaded image.</p>
+    <p><code>kubectl rollout status</code> blocks until the new pod passes its readiness probe (<code>GET /healthz</code> every 5 seconds), then up.sh prints the URL.</p>
+  </div></li>
+</ol>
+
+<section class="col">
+  <h2>ServiceAccount and RBAC</h2>
+  <p>Your kubectl uses admin credentials. Pods don't get those. A pod runs as a <strong>ServiceAccount</strong>, and by default that identity can do almost nothing. <code>manifests/base/20-rbac.yaml</code> creates three objects that together give the platform's own pods exactly the rights they need.</p>
+</section>
+
+<figure>
+  <div class="fig">
+  <svg viewBox="0 0 1000 270" role="img" aria-label="The RoleBinding build-agent links the subject ServiceAccount build-agent to the Role build-agent, whose rules allow jobs, cronjobs, pods and configmaps actions in the builds namespace.">
+    <defs>
+      <marker id="rm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-a"/></marker>
+    </defs>
+    <rect x="20" y="70" width="230" height="86" rx="8" class="box"/>
+    <text x="135" y="96" text-anchor="middle" class="hd">ServiceAccount</text>
+    <text x="135" y="116" text-anchor="middle" class="mo">build-agent</text>
+    <text x="135" y="138" text-anchor="middle" class="sm">"who": an identity for pods</text>
+    <text x="135" y="186" text-anchor="middle" class="sm">pods that set serviceAccountName:</text>
+    <text x="135" y="204" text-anchor="middle" class="mo">orchestrator Job</text>
+    <text x="135" y="220" text-anchor="middle" class="mo">build-agent Jobs</text>
+    <text x="135" y="236" text-anchor="middle" class="mo">dashboard Deployment</text>
+
+    <rect x="350" y="70" width="230" height="86" rx="8" class="box-a"/>
+    <text x="465" y="96" text-anchor="middle" class="hd">RoleBinding</text>
+    <text x="465" y="116" text-anchor="middle" class="mo">build-agent</text>
+    <text x="465" y="138" text-anchor="middle" class="sm">"grants": joins the two</text>
+    <path d="M350 113 H254" class="ln-a" marker-end="url(#rm)"/>
+    <text x="302" y="106" text-anchor="middle" class="sm">subjects</text>
+    <path d="M580 113 H676" class="ln-a" marker-end="url(#rm)"/>
+    <text x="628" y="106" text-anchor="middle" class="sm">roleRef</text>
+
+    <rect x="680" y="14" width="300" height="236" rx="8" class="box"/>
+    <text x="830" y="40" text-anchor="middle" class="hd">Role build-agent</text>
+    <text x="830" y="58" text-anchor="middle" class="sm">"what": allowed verbs, namespace builds only</text>
+    <line x1="696" y1="70" x2="964" y2="70" class="ln" style="stroke:var(--line)"/>
+    <text x="698" y="94" class="mo">batch / jobs</text>
+    <text x="698" y="111" class="sm">create get list watch delete</text>
+    <text x="698" y="138" class="mo">batch / cronjobs</text>
+    <text x="698" y="155" class="sm">get list</text>
+    <text x="698" y="182" class="mo">pods, pods/log</text>
+    <text x="698" y="199" class="sm">get list watch</text>
+    <text x="698" y="226" class="mo">configmaps</text>
+    <text x="698" y="243" class="sm">get list create patch update</text>
+  </svg>
+  </div>
+  <figcaption>A Role is a list of rules, a ServiceAccount is a name, and the RoleBinding connects them. Because it is a Role (not a ClusterRole) these rights stop at the <code>builds</code> namespace.</figcaption>
+</figure>
+
+<section class="col">
+  <h3>What happens on each API call from a pod</h3>
+  <p>Every pod with a ServiceAccount gets a short-lived token mounted at <code>/var/run/secrets/kubernetes.io/serviceaccount/</code>. When <code>agent/kube.py</code> runs <code>kubectl</code> inside the pod, kubectl finds that token automatically and sends it with the request.</p>
+</section>
+
+<figure>
+  <div class="fig">
+  <svg viewBox="0 0 1000 250" role="img" aria-label="An API request from the orchestrator pod goes through authentication, which maps the token to system:serviceaccount:builds:build-agent, then RBAC authorization, which allows create jobs in builds or returns 403 Forbidden, then admission and storage in etcd.">
+    <defs>
+      <marker id="fm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-m"/></marker>
+    </defs>
+    <rect x="10" y="30" width="170" height="100" rx="8" class="box-a"/>
+    <text x="95" y="56" text-anchor="middle" class="hd">orchestrator pod</text>
+    <text x="95" y="78" text-anchor="middle" class="sm">kubectl create -f -</text>
+    <text x="95" y="96" text-anchor="middle" class="sm">with the mounted token</text>
+    <text x="95" y="116" text-anchor="middle" class="mo">Bearer eyJhbG…</text>
+
+    <rect x="214" y="30" width="180" height="100" rx="8" class="box"/>
+    <text x="304" y="56" text-anchor="middle" class="hd">1 · Authentication</text>
+    <text x="304" y="78" text-anchor="middle" class="sm">who is this?</text>
+    <text x="304" y="98" text-anchor="middle" class="mo">system:serviceaccount:</text>
+    <text x="304" y="114" text-anchor="middle" class="mo">builds:build-agent</text>
+
+    <rect x="428" y="30" width="180" height="100" rx="8" class="box"/>
+    <text x="518" y="56" text-anchor="middle" class="hd">2 · Authorization</text>
+    <text x="518" y="78" text-anchor="middle" class="sm">RBAC: any binding allowing</text>
+    <text x="518" y="98" text-anchor="middle" class="mo">create batch/jobs</text>
+    <text x="518" y="114" text-anchor="middle" class="mo">in builds?</text>
+
+    <rect x="642" y="30" width="150" height="100" rx="8" class="box"/>
+    <text x="717" y="56" text-anchor="middle" class="hd">3 · Admission</text>
+    <text x="717" y="78" text-anchor="middle" class="sm">defaults filled in,</text>
+    <text x="717" y="96" text-anchor="middle" class="sm">policies checked</text>
+
+    <rect x="826" y="30" width="164" height="100" rx="8" class="box"/>
+    <text x="908" y="56" text-anchor="middle" class="hd">4 · Stored</text>
+    <text x="908" y="78" text-anchor="middle" class="sm">Job saved in etcd,</text>
+    <text x="908" y="96" text-anchor="middle" class="sm">Job controller acts</text>
+
+    <path d="M180 80 H210" class="ln" marker-end="url(#fm)"/>
+    <path d="M394 80 H424" class="ln" marker-end="url(#fm)"/>
+    <path d="M608 80 H638" class="ln" marker-end="url(#fm)"/>
+    <text x="623" y="72" text-anchor="middle" class="sm t-ok">yes</text>
+    <path d="M792 80 H822" class="ln" marker-end="url(#fm)"/>
+
+    <path d="M518 130 V176" class="ln" marker-end="url(#fm)"/>
+    <text x="526" y="158" class="sm t-bad">no</text>
+    <rect x="398" y="180" width="240" height="56" rx="8" class="box" style="stroke:var(--bad)"/>
+    <text x="518" y="203" text-anchor="middle" class="hd t-bad">403 Forbidden</text>
+    <text x="518" y="223" text-anchor="middle" class="sm">e.g. delete pods, or create jobs in default</text>
+  </svg>
+  </div>
+  <figcaption>RBAC is checked on every request, not when objects are created. That's why the order of the Role and RoleBinding doesn't matter: a binding can even point at a Role that doesn't exist yet; it just grants nothing until it does.</figcaption>
+</figure>
+
+<section class="col">
+  <h3>Why each rule is there</h3>
+</section>
+<div class="tbl"><table>
+  <thead><tr><th>Rule</th><th>Who needs it</th><th>Used for</th></tr></thead>
+  <tbody>
+    <tr><td><code>jobs: create, get, list, watch, delete</code></td><td>orchestrator, build agent, dashboard</td><td>create clone, build-agent and build Jobs; poll their status in <code>kube.wait_for_job</code>; list Jobs for the dashboard; the dashboard's Run button creates an orchestrator Job</td></tr>
+    <tr><td><code>cronjobs: get, list</code></td><td>dashboard</td><td><code>kubectl create job --from=cronjob/orchestrator</code> reads the CronJob's template first</td></tr>
+    <tr><td><code>pods, pods/log: get, list, watch</code></td><td>orchestrator, build agent</td><td><code>kubectl logs job/…</code> and pod status in <code>job_failure_reason</code></td></tr>
+    <tr><td><code>configmaps: get, list, create, patch, update</code></td><td>all three</td><td>read and patch the <code>build-status</code> records</td></tr>
+  </tbody>
+</table></div>
+
+<section class="col">
+  <p>Notice what is missing: no <code>secrets</code>, no <code>delete pods</code>, nothing cluster-wide. The clone and build Jobs don't set <code>serviceAccountName</code>, so they run as the namespace's <code>default</code> account, and they also set <code>automountServiceAccountToken: false</code>, so they carry no token at all.</p>
+
+  <h3>Try it</h3>
+<pre><code>kubectl -n builds get sa,role,rolebinding
+kubectl auth can-i create jobs -n builds --as=system:serviceaccount:builds:build-agent    # yes
+kubectl auth can-i delete pods -n builds --as=system:serviceaccount:builds:build-agent    # no
+kubectl auth can-i create jobs -n default --as=system:serviceaccount:builds:build-agent  # no
+kubectl -n builds get pvc workspace -o jsonpath='{.spec.volumeName}{"\n"}'</code></pre>
+
+  <h2>The registry path</h2>
+  <p>With <code>REGISTRY=ghcr.io/my-org TAG=1.0.0 ./scripts/up.sh</code>, frame 2 is skipped: nothing is built or loaded. Frame 3 renders <code>manifests/overlays/registry</code> instead of <code>base</code>, swaps <code>REGISTRY_PLACEHOLDER</code> and <code>TAG_PLACEHOLDER</code> with <code>sed</code>, and pipes the result to <code>kubectl apply -f -</code>. The overlay rewrites the image names and adds <code>imagePullSecrets: registry-creds</code> to both the <code>default</code> and <code>build-agent</code> ServiceAccounts, so every pod, including Jobs created later at run time, can pull from a private registry. up.sh then reminds you to create that secret if it's missing.</p>
+</section>
+
+<footer>Based on <code>tanmaypatil/k8s-platform</code> at commit <code>9e0aea2</code>: <code>scripts/up.sh</code>, <code>cluster/kind-config.yaml</code>, <code>manifests/base/</code>. Part 1 covers the architecture; part 3 covers <code>scripts/trigger.sh</code>.<p style="margin-top:8px">All explainers: <a href="architecture.html">Architecture</a> · <a href="up-sequence.html">up.sh sequence</a> · <a href="trigger-sequence.html">trigger.sh sequence</a> · <a href="manifests.html">Manifest guide</a></p></footer>
+</main>
+
+</body>
+</html>
