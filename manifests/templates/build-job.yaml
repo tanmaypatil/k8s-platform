@@ -24,6 +24,7 @@ spec:
         k8s-platform/java: "${JAVA_VERSION}"
     spec:
       restartPolicy: Never
+      automountServiceAccountToken: false   # never calls the Kubernetes API, so no token
       containers:
         - name: maven
           image: ${BUILD_IMAGE}

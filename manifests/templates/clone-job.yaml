@@ -28,6 +28,7 @@ spec:
         k8s-platform/repo: ${REPO}
     spec:
       restartPolicy: Never
+      automountServiceAccountToken: false   # never calls the Kubernetes API, so no token
       containers:
         - name: git
           image: ${GIT_IMAGE}
