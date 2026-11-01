@@ -1,0 +1,40 @@
+# The orchestrator, build agent and dashboard all run as this ServiceAccount.
+# It can only touch Jobs, Pods and ConfigMaps inside the "builds" namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-agent
+  namespace: builds
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: build-agent
+  namespace: builds
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: build-agent
+  namespace: builds
+subjects:
+  - kind: ServiceAccount
+    name: build-agent
+    namespace: builds
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: build-agent

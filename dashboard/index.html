@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Dashboard</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #667085; --line: #e4e7ec;
+    --accent: #2f6fde; --ok: #1f9d55; --fail: #d64545; --run: #d98e04; --queue: #8a94a6;
+    --clone: #7aa7f0; --build: #2f6fde;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151c; --panel: #1a1f29; --text: #e6e9ef; --muted: #98a2b3; --line: #2a3140;
+      --accent: #6c9cf5; --ok: #3cc47c; --fail: #f06a6a; --run: #f2b33d; --queue: #6b7588;
+      --clone: #3f5f99; --build: #6c9cf5;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 15px; margin: 28px 0 10px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 9px 16px;
+           font-weight: 600; cursor: pointer; font-size: 14px; }
+  button:disabled { opacity: .55; cursor: default; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 18px; }
+  .tile, .run, .jobs { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .tile { padding: 12px 14px; }
+  .tile .k { color: var(--muted); font-size: 12px; }
+  .tile .v { font-size: 22px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .run { margin-bottom: 12px; overflow: hidden; }
+  .run-head { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+              padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .run-head b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  .row { display: grid; grid-template-columns: 130px 60px 100px 1fr 150px; gap: 10px; align-items: center;
+         padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .repo { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  .java { font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; text-align: center; }
+  .pill { font-size: 11px; font-weight: 700; letter-spacing: .03em; border-radius: 999px; padding: 2px 8px;
+          color: #fff; text-align: center; justify-self: start; }
+  .SUCCEEDED { background: var(--ok); } .FAILED { background: var(--fail); }
+  .QUEUED { background: var(--queue); }
+  .CLONING, .DETECTING, .BUILDING, .RUNNING { background: var(--run); }
+  .bar { height: 10px; background: var(--line); border-radius: 5px; display: flex; overflow: hidden; }
+  .bar span { display: block; height: 100%; }
+  .bar .c { background: var(--clone); } .bar .b { background: var(--build); }
+  .msg { grid-column: 1 / -1; color: var(--muted); font-size: 12px; margin-top: -4px;
+         display: flex; justify-content: space-between; gap: 12px; }
+  .msg a { color: var(--accent); cursor: pointer; white-space: nowrap; }
+  .times { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); text-align: right; }
+  .times b { color: var(--text); font-size: 14px; }
+  pre { grid-column: 1 / -1; margin: 0; max-height: 320px; overflow: auto; background: var(--bg);
+        border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 12px; }
+  .legend { display: flex; gap: 14px; color: var(--muted); font-size: 12px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .jobs { overflow-x: auto; }
+  .empty { padding: 24px; text-align: center; color: var(--muted); }
+  .err { color: var(--fail); margin-top: 12px; }
+  @media (max-width: 720px) {
+    .row { grid-template-columns: 1fr auto auto; }
+    .bar { grid-column: 1 / -1; }
+    .times { grid-column: 1 / -1; text-align: left; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Java build platform</h1>
+      <div class="sub">Namespace <code>builds</code> · clone Job → build agent Job → build Job · refreshes every 3s</div>
+    </div>
+    <button id="run">Run builds</button>
+  </header>
+  <div id="error" class="err"></div>
+
+  <div class="tiles">
+    <div class="tile"><div class="k">Last run</div><div class="v" id="t-last">–</div></div>
+    <div class="tile"><div class="k">Builds succeeded</div><div class="v" id="t-ok">–</div></div>
+    <div class="tile"><div class="k">Builds failed</div><div class="v" id="t-fail">–</div></div>
+    <div class="tile"><div class="k">Avg build time</div><div class="v" id="t-avg">–</div></div>
+  </div>
+
+  <h2 style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    Runs
+    <span class="legend"><span><i style="background:var(--clone)"></i>clone</span><span><i style="background:var(--build)"></i>detect + build</span></span>
+  </h2>
+  <div id="runs"><div class="run empty">Loading…</div></div>
+
+  <h2>Kubernetes Jobs</h2>
+  <div class="jobs"><table>
+    <thead><tr><th>Job</th><th>Stage</th><th>Repo</th><th>Java</th><th>State</th><th>Duration</th></tr></thead>
+    <tbody id="jobs"></tbody>
+  </table></div>
+</main>
+<script>
+const openLogs = new Set();
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const secs = (v) => v == null ? "–" : (v >= 60 ? `${Math.floor(v/60)}m ${Math.round(v%60)}s` : `${v.toFixed(1)}s`);
+const since = (iso, now) => iso ? (Date.parse(now) - Date.parse(iso)) / 1000 : null;
+const RUNNING = ["QUEUED", "CLONING", "DETECTING", "BUILDING"];
+
+function timing(r, now) {
+  const live = RUNNING.includes(r.stage);
+  const clone = r.cloneSeconds ?? (live && r.stage === "CLONING" ? since(r.startedAt, now) : null);
+  const total = r.durationSeconds ?? (live ? since(r.startedAt, now) : clone);
+  const build = r.buildSeconds ?? (total != null && clone != null ? Math.max(0, total - clone) : null);
+  return { clone, build, total };
+}
+
+function render(data) {
+  const now = data.now;
+  const runs = data.runs;
+  const all = runs.flatMap(r => r.repos);
+  const done = all.filter(r => r.stage === "SUCCEEDED");
+  $("t-last").innerHTML = runs[0] ? `<span class="pill ${runs[0].state}">${runs[0].state}</span>` : "–";
+  $("t-ok").textContent = done.length;
+  $("t-fail").textContent = all.filter(r => r.stage === "FAILED").length;
+  const avg = done.length ? done.reduce((s, r) => s + (r.buildSeconds || 0), 0) / done.length : null;
+  $("t-avg").textContent = secs(avg);
+
+  const scale = Math.max(10, ...all.map(r => timing(r, now).total || 0));
+  $("runs").innerHTML = runs.length ? runs.map(run => `
+    <div class="run">
+      <div class="run-head"><b>${esc(run.buildId)}</b>
+        <span class="sub">${esc((run.startedAt || "").replace("T", " ").replace("Z", " UTC"))}
+        &nbsp;<span class="pill ${run.state}">${run.state}</span></span></div>
+      ${run.repos.map(r => {
+        const t = timing(r, now), key = `${run.buildId}/${r.repo}`;
+        return `<div class="row">
+          <div class="repo">${esc(r.repo)}</div>
+          <div class="java">${r.javaVersion ? "Java " + esc(r.javaVersion) : "–"}</div>
+          <div class="pill ${esc(r.stage)}">${esc(r.stage)}</div>
+          <div class="bar" title="clone ${secs(t.clone)} · build ${secs(t.build)}">
+            <span class="c" style="width:${100 * (t.clone || 0) / scale}%"></span>
+            <span class="b" style="width:${100 * (t.build || 0) / scale}%"></span></div>
+          <div class="times"><b>${secs(t.total)}</b><br>clone ${secs(t.clone)} · build ${secs(t.build)}</div>
+          <div class="msg"><span>${esc(r.message)}${r.image ? ` · <code>${esc(r.image)}</code>` : ""}</span>
+            ${r.buildJob ? `<a data-log="${esc(key)}">${openLogs.has(key) ? "hide log" : "show log"}</a>` : ""}</div>
+          ${openLogs.has(key) ? `<pre id="log-${esc(key)}">loading…</pre>` : ""}
+        </div>`;
+      }).join("")}
+    </div>`).join("") : `<div class="run empty">No builds yet. Press <b>Run builds</b>.</div>`;
+
+  $("jobs").innerHTML = data.jobs.length ? data.jobs.map(j => {
+    const end = j.completionTime || (j.state === "Running" ? now : null);
+    const d = j.startTime && end ? (Date.parse(end) - Date.parse(j.startTime)) / 1000 : null;
+    const cls = j.state === "Complete" ? "SUCCEEDED" : j.state === "Failed" ? "FAILED" : "RUNNING";
+    return `<tr><td><code>${esc(j.name)}</code></td><td>${esc(j.stage)}</td><td>${esc(j.repo || "–")}</td>
+      <td>${esc(j.java || "–")}</td><td><span class="pill ${cls}">${esc(j.state)}</span></td><td>${secs(d)}</td></tr>`;
+  }).join("") : `<tr><td colspan="6" class="empty">No Jobs (finished Jobs are deleted after 1 hour)</td></tr>`;
+
+  openLogs.forEach(async key => {
+    const [build, repo] = key.split("/");
+    const res = await fetch(`/api/logs?build=${encodeURIComponent(build)}&repo=${encodeURIComponent(repo)}`);
+    const el = document.getElementById(`log-${key}`);
+    if (el) { el.textContent = await res.text(); }
+  });
+}
+
+async function refresh() {
+  try {
+    const res = await fetch("/api/builds");
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    $("error").textContent = "";
+    render(data);
+  } catch (e) { $("error").textContent = "Could not load status: " + e.message; }
+}
+
+$("runs").addEventListener("click", (e) => {
+  const key = e.target.dataset && e.target.dataset.log;
+  if (!key) return;
+  openLogs.has(key) ? openLogs.delete(key) : openLogs.add(key);
+  refresh();
+});
+
+$("run").addEventListener("click", async () => {
+  $("run").disabled = true;
+  try {
+    const res = await fetch("/api/trigger", { method: "POST" });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+  } catch (e) { $("error").textContent = "Trigger failed: " + e.message; }
+  setTimeout(() => { $("run").disabled = false; refresh(); }, 1500);
+});
+
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

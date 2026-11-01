@@ -1,0 +1,29 @@
+# Platform settings, injected into the agent pods with envFrom.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-config
+  namespace: builds
+data:
+  # name=git-url, comma separated. Names must be lowercase DNS labels.
+  REPOS: "k8s-java8=https://github.com/tanmaypatil/k8s-java8.git,k8s-java17=https://github.com/tanmaypatil/k8s-java17.git"
+  GIT_REF: "main"
+  # Build image per Java major version. The build agent picks the lowest one that
+  # is >= the version the repo asks for.
+  JAVA_8_IMAGE: "k8s-platform/java8-maven:dev"
+  JAVA_17_IMAGE: "k8s-platform/java17-maven:dev"
+  AGENT_IMAGE: "k8s-platform/agent:dev"
+  GIT_IMAGE: "alpine/git:2.47.2"
+  KEEP_RUNS: "10"
+---
+# Build status store. One key per <build-id>.<repo>, value is a JSON record.
+# The agents patch it; the dashboard reads it.
+#   kubectl -n builds get configmap build-status -o yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: build-status
+  namespace: builds
+  labels:
+    app.kubernetes.io/part-of: k8s-platform
+data: {}

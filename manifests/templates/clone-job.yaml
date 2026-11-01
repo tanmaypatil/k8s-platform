@@ -1,0 +1,60 @@
+# Clone Job: shallow-clones one repo onto the shared PVC.
+# Rendered by the orchestrator: placeholders like ${REPO} are filled in before `kubectl create`;
+# while $(DEST)-style references are expanded by Kubernetes itself from the container env.
+# By hand:
+#   export JOB_NAME=clone-demo BUILD_ID=demo REPO=k8s-java8 GIT_REF=main \
+#          REPO_URL=https://github.com/tanmaypatil/k8s-java8.git GIT_IMAGE=alpine/git:2.47.2
+#   envsubst '$JOB_NAME $BUILD_ID $REPO $REPO_URL $GIT_REF $GIT_IMAGE' < manifests/templates/clone-job.yaml \
+#     | kubectl -n builds create -f -
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${JOB_NAME}
+  labels:
+    app.kubernetes.io/part-of: k8s-platform
+    k8s-platform/stage: clone
+    k8s-platform/build-id: ${BUILD_ID}
+    k8s-platform/repo: ${REPO}
+spec:
+  backoffLimit: 2                # retry flaky network clones
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 3600  # Kubernetes deletes the Job an hour after it ends
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: k8s-platform
+        k8s-platform/stage: clone
+        k8s-platform/build-id: ${BUILD_ID}
+        k8s-platform/repo: ${REPO}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: git
+          image: ${GIT_IMAGE}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: REPO_URL
+              value: "${REPO_URL}"
+            - name: GIT_REF
+              value: "${GIT_REF}"
+            - name: DEST
+              value: /workspace/runs/${BUILD_ID}/${REPO}
+          envFrom:
+            - configMapRef: {name: build-env, optional: true}   # e.g. proxy settings
+          command: ["/bin/sh", "-c"]
+          args:
+            - >-
+              rm -rf $(DEST) && mkdir -p $(DEST) &&
+              git clone --depth 1 --branch $(GIT_REF) $(REPO_URL) $(DEST) &&
+              git -C $(DEST) log -1 --format='cloned %h %s'
+          volumeMounts:
+            - {name: workspace, mountPath: /workspace}
+            - {name: extra-ca, mountPath: /etc/extra-ca, readOnly: true}
+          resources:
+            requests: {cpu: 100m, memory: 64Mi}
+            limits: {memory: 256Mi}
+      volumes:
+        - name: workspace
+          persistentVolumeClaim: {claimName: workspace}
+        - name: extra-ca
+          configMap: {name: extra-ca, optional: true}

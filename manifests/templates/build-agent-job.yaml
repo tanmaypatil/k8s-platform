@@ -1,0 +1,43 @@
+# Build agent Job: looks at the cloned repo, works out its Java version,
+# then creates the build Job with the matching image and records the result.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${JOB_NAME}
+  labels:
+    app.kubernetes.io/part-of: k8s-platform
+    k8s-platform/stage: build-agent
+    k8s-platform/build-id: ${BUILD_ID}
+    k8s-platform/repo: ${REPO}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 1200
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: k8s-platform
+        k8s-platform/stage: build-agent
+        k8s-platform/build-id: ${BUILD_ID}
+        k8s-platform/repo: ${REPO}
+    spec:
+      serviceAccountName: build-agent
+      restartPolicy: Never
+      containers:
+        - name: build-agent
+          image: ${AGENT_IMAGE}
+          imagePullPolicy: IfNotPresent
+          command: ["python", "/app/agent/build_agent.py"]
+          env:
+            - {name: BUILD_ID, value: "${BUILD_ID}"}
+            - {name: REPO, value: "${REPO}"}
+          envFrom:
+            - configMapRef: {name: platform-config}
+          volumeMounts:
+            - {name: workspace, mountPath: /workspace}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 256Mi}
+      volumes:
+        - name: workspace
+          persistentVolumeClaim: {claimName: workspace}

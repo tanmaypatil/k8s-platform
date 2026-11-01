@@ -1,0 +1,54 @@
+# The orchestrator is defined as a *suspended* CronJob. It never runs on a schedule;
+# it is a reusable Job template you trigger by hand:
+#   kubectl -n builds create job --from=cronjob/orchestrator run-$(date +%Y%m%d-%H%M%S)
+# The Job name becomes the build id (see BUILD_ID below).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: orchestrator
+  namespace: builds
+  labels:
+    app.kubernetes.io/part-of: k8s-platform
+spec:
+  schedule: "0 0 1 1 *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: k8s-platform
+        k8s-platform/stage: orchestrator
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/part-of: k8s-platform
+            k8s-platform/stage: orchestrator
+        spec:
+          serviceAccountName: build-agent
+          restartPolicy: Never
+          containers:
+            - name: orchestrator
+              image: k8s-platform/agent:dev
+              imagePullPolicy: IfNotPresent
+              command: ["python", "/app/agent/orchestrator.py"]
+              env:
+                - name: BUILD_ID   # downward API: the Job's own name
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.labels['batch.kubernetes.io/job-name']
+              envFrom:
+                - configMapRef:
+                    name: platform-config
+              volumeMounts:
+                - name: workspace
+                  mountPath: /workspace
+              resources:
+                requests: {cpu: 50m, memory: 64Mi}
+                limits: {memory: 256Mi}
+          volumes:
+            - name: workspace
+              persistentVolumeClaim:
+                claimName: workspace

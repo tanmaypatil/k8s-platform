@@ -1,0 +1,21 @@
+# Shared workspace for every Job in the pipeline.
+#   /workspace/runs/<build-id>/<repo>       sources (written by the clone Job)
+#   /workspace/m2                            shared Maven cache (makes the 2nd build faster)
+#   /workspace/logs/<build-id>/<repo>.log    build logs (read by the dashboard)
+#   /workspace/artifacts/<build-id>/<repo>   built jars
+#
+# ReadWriteOnce is fine on a single-node cluster (kind / Minikube): every pod lands
+# on the same node, so they can all mount it. On a multi-node cluster use a
+# ReadWriteMany storage class (NFS, EFS, Filestore...) and change accessModes.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: workspace
+  namespace: builds
+  labels:
+    app.kubernetes.io/part-of: k8s-platform
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi

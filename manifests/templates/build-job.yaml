@@ -1,0 +1,50 @@
+# Build Job: runs `mvn package` in the image the build agent chose
+# (java8-maven or java17-maven) against the sources on the PVC.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${JOB_NAME}
+  labels:
+    app.kubernetes.io/part-of: k8s-platform
+    k8s-platform/stage: build
+    k8s-platform/build-id: ${BUILD_ID}
+    k8s-platform/repo: ${REPO}
+    k8s-platform/java: "${JAVA_VERSION}"
+spec:
+  backoffLimit: 0                # a failed compile should not be retried
+  activeDeadlineSeconds: 900
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: k8s-platform
+        k8s-platform/stage: build
+        k8s-platform/build-id: ${BUILD_ID}
+        k8s-platform/repo: ${REPO}
+        k8s-platform/java: "${JAVA_VERSION}"
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: maven
+          image: ${BUILD_IMAGE}
+          imagePullPolicy: IfNotPresent
+          command: ["run-build"]
+          env:
+            - {name: SRC_DIR, value: /workspace/runs/${BUILD_ID}/${REPO}}
+            - {name: LOG_FILE, value: /workspace/logs/${BUILD_ID}/${REPO}.log}
+            - {name: ARTIFACT_DIR, value: /workspace/artifacts/${BUILD_ID}/${REPO}}
+            - {name: MAVEN_REPO, value: /workspace/m2}
+            - {name: MAVEN_GOALS, value: package}
+          envFrom:
+            - configMapRef: {name: build-env, optional: true}   # e.g. proxy settings
+          volumeMounts:
+            - {name: workspace, mountPath: /workspace}
+            - {name: extra-ca, mountPath: /etc/extra-ca, readOnly: true}
+          resources:
+            requests: {cpu: 500m, memory: 512Mi}
+            limits: {memory: 1Gi}
+      volumes:
+        - name: workspace
+          persistentVolumeClaim: {claimName: workspace}
+        - name: extra-ca
+          configMap: {name: extra-ca, optional: true}
