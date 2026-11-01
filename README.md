@@ -12,6 +12,18 @@ Java version each one targets, builds it in a matching JDK image, and shows the 
 
 ![dashboard](docs/dashboard.png)
 
+## Explainers
+
+Illustrated HTML walkthroughs live in [`docs/explainers/`](docs/explainers/). GitHub shows HTML as source, so
+clone the repo and open them in a browser (`open docs/explainers/architecture.html` on a Mac).
+
+| Page | What it covers |
+|---|---|
+| [architecture.html](docs/explainers/architecture.html) | What runs in the cluster, with the clone, build-agent and build Jobs highlighted |
+| [up-sequence.html](docs/explainers/up-sequence.html) | `scripts/up.sh` step by step: cluster, images, manifest apply order, ServiceAccount and RBAC |
+| [trigger-sequence.html](docs/explainers/trigger-sequence.html) | `scripts/trigger.sh` step by step: orchestrator Job, per-repo Jobs, status stages, cleanup |
+| [manifests.html](docs/explainers/manifests.html) | Every YAML file in the repo, field by field |
+
 ## How it works
 
 ```
