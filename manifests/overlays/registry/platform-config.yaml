@@ -1,0 +1,10 @@
+# Images used by the Jobs the agents create (clone/build/build-agent Jobs).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-config
+  namespace: builds
+data:
+  JAVA_8_IMAGE: "REGISTRY_PLACEHOLDER/java8-maven:TAG_PLACEHOLDER"
+  JAVA_17_IMAGE: "REGISTRY_PLACEHOLDER/java17-maven:TAG_PLACEHOLDER"
+  AGENT_IMAGE: "REGISTRY_PLACEHOLDER/agent:TAG_PLACEHOLDER"

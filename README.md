@@ -126,8 +126,35 @@ agent/status_store.py           build-status ConfigMap read/write (+ CLI table)
 agent/kube.py                   kubectl helpers
 dashboard/                      stdlib web server + single-page UI
 manifests/base/                 kubectl apply -k manifests/base
+manifests/overlays/registry/    same, but with images from a container registry
 manifests/templates/            Job templates rendered by the agents (or by envsubst)
-scripts/                        up.sh, trigger.sh, status.sh, down.sh
+scripts/                        up.sh, trigger.sh, status.sh, down.sh, push-images.sh
+```
+
+## Using prebuilt images from a registry
+
+`up.sh` builds the images locally so the project works with nothing else set up. In a real setup the
+images come from your organisation's registry, and the platform only needs their names:
+
+```bash
+REGISTRY=ghcr.io/my-org TAG=1.0.0 ./scripts/push-images.sh   # CI's job: build (amd64 + arm64) and push
+REGISTRY=ghcr.io/my-org TAG=1.0.0 ./scripts/up.sh            # skips build + kind load
+```
+
+That uses the kustomize overlay in `manifests/overlays/registry`, which:
+
+- rewrites the orchestrator and dashboard images (kustomize `images:`)
+- sets `JAVA_8_IMAGE`, `JAVA_17_IMAGE` and `AGENT_IMAGE` in `platform-config`, which the agents use for
+  the Jobs they create
+- attaches an `imagePullSecret` called `registry-creds` to the `default` and `build-agent`
+  ServiceAccounts, so every pod, including Jobs created at runtime, can pull from a private registry
+  without touching the Job templates
+
+For a private registry, create the secret once:
+
+```bash
+kubectl -n builds create secret docker-registry registry-creds \
+  --docker-server=ghcr.io --docker-username=<user> --docker-password=<token>
 ```
 
 ## Behind a corporate proxy (optional)

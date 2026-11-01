@@ -1,0 +1,25 @@
+# Use prebuilt images from a container registry instead of building them locally.
+#
+#   REGISTRY=ghcr.io/my-org TAG=1.0.0 ./scripts/up.sh
+#
+# up.sh renders this overlay and replaces REGISTRY_PLACEHOLDER / TAG_PLACEHOLDER.
+# To apply it by hand:
+#   kubectl kustomize manifests/overlays/registry \
+#     | sed -e 's#REGISTRY_PLACEHOLDER#ghcr.io/my-org#g' -e 's#TAG_PLACEHOLDER#1.0.0#g' \
+#     | kubectl apply -f -
+#
+# Expected images: <registry>/java8-maven:<tag>, <registry>/java17-maven:<tag>, <registry>/agent:<tag>
+# (scripts/push-images.sh builds and pushes all three).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - default-serviceaccount.yaml
+images:
+  # rewrites the image of the orchestrator CronJob and the dashboard Deployment
+  - name: k8s-platform/agent
+    newName: REGISTRY_PLACEHOLDER/agent
+    newTag: TAG_PLACEHOLDER
+patches:
+  - path: platform-config.yaml
+  - path: build-agent-serviceaccount.yaml
